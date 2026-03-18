@@ -1,0 +1,48 @@
+{
+  "model": {
+    "type": "api",
+    "name": "OpenAIModel",
+    "config": {
+      "api_key": "YOUR_API_KEY",
+      "model_name": "gpt-3.5-turbo",
+      "base_url": "https://api.openai.com/v1"
+    }
+  },
+  "dataset": {
+    "type": "standard",
+    "name": "MMLUDataset",
+    "config": {
+      "split": "test"
+    }
+  },
+  "backend": {
+    "type": "native",
+    "name": "NativeBackend",
+    "config": {
+      "task_type": "llm"
+    }
+  },
+  "performance": {
+    "type": "concurrency",
+    "name": "ConcurrencyTest",
+    "config": {
+      "concurrency": 5,
+      "requests": 100
+    }
+  },
+  "report": {
+    "type": "json",
+    "name": "JSONReport",
+    "config": {
+      "output_path": "results/eval_results.json"
+    }
+  },
+  "visualization": {
+    "type": "wandb",
+    "name": "WandbVisualizer",
+    "config": {
+      "project": "model_eval",
+      "name": "eval_run"
+    }
+  }
+}
