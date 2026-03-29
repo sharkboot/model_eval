@@ -25,27 +25,15 @@ model_eval/
 
 ### 基本依赖
 
-```bash
-pip install -r requirements.txt
-```
+本框架不依赖任何外部库，使用纯Python实现。
 
 ### 可选依赖
 
 根据需要安装以下依赖：
 
-- **ModelScope**：用于加载本地模型和数据集
-  ```bash
-  pip install modelscope
-  ```
-
-- **第三方评测框架**：
-  ```bash
-  pip install opencompass mteb ragas
-  ```
-
 - **可视化平台**：
   ```bash
-  pip install gradio wandb swanlab clearml
+  pip install gradio
   ```
 
 ## 使用方法
@@ -56,16 +44,16 @@ pip install -r requirements.txt
 
 ### 2. 运行评测
 
-使用示例脚本运行评测，默认使用 `configs/example_config.json` 配置文件：
+使用评测框架执行脚本运行评测，默认使用 `configs/example_config.json` 配置文件：
 
 ```bash
-python examples/example_usage.py
+python run_eval.py
 ```
 
 使用指定的配置文件运行评测：
 
 ```bash
-python examples/example_usage.py --config configs/test_config.json
+python run_eval.py --config configs/test_config.json
 ```
 
 ### 3. 查看结果

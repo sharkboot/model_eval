@@ -16,11 +16,14 @@ class GradioVisualizer(BaseVisualizer):
             )
             return True
         except ImportError:
-            raise ImportError("Please install gradio: pip install gradio")
+            return False
     
     def visualize(self, data):
         if not self.interface:
-            self.setup()
+            success = self.setup()
+            if not success:
+                print("Gradio is not installed. Visualization will be skipped.")
+                return
         # Launch the interface with sample data
         self.interface.launch(share=self.config.get('share', False))
     
