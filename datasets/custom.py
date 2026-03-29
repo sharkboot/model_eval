@@ -1,6 +1,6 @@
 from .base import BaseDataset
-import json
 import os
+from utils.data_reader import read_file
 
 class CustomDataset(BaseDataset):
     def __init__(self, config):
@@ -12,8 +12,7 @@ class CustomDataset(BaseDataset):
         if not os.path.exists(self.data_path):
             raise FileNotFoundError(f"Data file not found: {self.data_path}")
         
-        with open(self.data_path, 'r', encoding='utf-8') as f:
-            self.data = json.load(f)
+        self.data = read_file(self.data_path)
     
     def get_dataset_info(self):
         return {
@@ -21,6 +20,23 @@ class CustomDataset(BaseDataset):
             'data_type': self.data_type,
             'data_path': self.data_path,
             'data_size': len(self.data)
+        }
+    
+    def convert_to_case(self, item):
+        """将数据项转换为标准案例格式"""
+        prompt = item.get('prompt', item.get('question', ''))
+        answer = item.get('answer', '')
+        metadata = {
+            key: value for key, value in item.items()
+            if key not in ['prompt', 'question', 'answer']
+        }
+        # 处理CSV格式中的options字段，将|分隔的字符串转换为列表
+        if 'options' in metadata and isinstance(metadata['options'], str):
+            metadata['options'] = metadata['options'].split('|')
+        return {
+            'prompt': prompt,
+            'answer': answer,
+            'metadata': metadata
         }
 
 class MCQDataset(CustomDataset):

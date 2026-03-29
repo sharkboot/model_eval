@@ -22,6 +22,20 @@ class StandardDataset(BaseDataset):
             'split': self.split,
             'data_size': len(self.data)
         }
+    
+    def convert_to_case(self, item):
+        """将数据项转换为标准案例格式"""
+        prompt = item.get('prompt', item.get('question', ''))
+        answer = item.get('answer', '')
+        metadata = {
+            key: value for key, value in item.items()
+            if key not in ['prompt', 'question', 'answer']
+        }
+        return {
+            'prompt': prompt,
+            'answer': answer,
+            'metadata': metadata
+        }
 
 class MMLUDataset(StandardDataset):
     def __init__(self, config):

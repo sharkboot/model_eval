@@ -150,11 +150,28 @@ viz.save()
 
 ### 数据集配置
 
+#### 标准数据集
+
 ```json
 "dataset": {
   "type": "standard",
   "name": "MMLUDataset",
   "config": {
+    "split": "test"
+  }
+}
+```
+
+#### 自定义数据集
+
+支持多种文件格式：JSON、JSONL、CSV、XLSX、Parquet
+
+```json
+"dataset": {
+  "type": "custom",
+  "name": "MCQDataset",
+  "config": {
+    "data_path": "data/mcq_sample.json",
     "split": "test"
   }
 }
