@@ -1,7 +1,9 @@
 from .base import BaseModel
 import requests
 import json
+import asyncio
 from openai import OpenAI
+from openai import AsyncOpenAI
 
 class APIModel(BaseModel):
     def __init__(self, config):
@@ -12,6 +14,9 @@ class APIModel(BaseModel):
     
     def generate(self, prompt, **kwargs):
         raise NotImplementedError("Subclass must implement generate method")
+    
+    async def async_generate(self, prompt, **kwargs):
+        raise NotImplementedError("Subclass must implement async_generate method")
     
     def get_model_info(self):
         return {
@@ -29,11 +34,31 @@ class OpenAIModel(APIModel):
             api_key=self.api_key,
             base_url=self.base_url
         )
+        # 初始化异步OpenAI客户端
+        self.async_client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url
+        )
     
     def generate(self, prompt, **kwargs):
         try:
             # 使用chat.completions.create方法调用API
             completion = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{'role': 'user', 'content': prompt}],
+                **kwargs
+            )
+            # 返回模型的响应
+            return completion.choices[0].message.content
+        except Exception as e:
+            print(f"API call failed: {e}")
+            # 返回一个模拟响应，以便评测过程能够继续
+            return "我不知道。"  # 使用一个通用的未尝试回答，这样评测过程能够继续
+    
+    async def async_generate(self, prompt, **kwargs):
+        try:
+            # 使用异步chat.completions.create方法调用API
+            completion = await self.async_client.chat.completions.create(
                 model=self.model_name,
                 messages=[{'role': 'user', 'content': prompt}],
                 **kwargs

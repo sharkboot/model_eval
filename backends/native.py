@@ -1,5 +1,6 @@
 from .base import BaseBackend
 import time
+import asyncio
 
 class NativeBackend(BaseBackend):
     def __init__(self, config):
@@ -8,7 +9,7 @@ class NativeBackend(BaseBackend):
         self.eval_type = config.get('eval_type', 'rule')  # rule 或 model
         self.judge_model = config.get('judge_model', None)  # 裁判模型
     
-    def evaluate(self, model, dataset, max_samples=None):
+    def evaluate(self, model, dataset, max_samples=None, num_runs=1, scoring_strategy='highest'):
         results = []
         dataset.load()
         data = dataset.get_data()
@@ -22,18 +23,30 @@ class NativeBackend(BaseBackend):
             try:
                 # 转换为标准案例格式
                 case = dataset.convert_to_case(item)
-                # 生成模型响应
-                response = model.generate(case['prompt'])
-                # 执行评估
-                score = self.execute(model, case, response)
+                
+                # 执行多次评测
+                runs = []
+                for run in range(num_runs):
+                    # 生成模型响应
+                    response = model.generate(case['prompt'])
+                    # 执行评估
+                    score = self.execute(model, case, response)
+                    runs.append({
+                        'run_id': run,
+                        'output': response,
+                        'score': score
+                    })
+                
+                # 根据策略确定最终得分
+                final_score = self._determine_final_score(runs, scoring_strategy)
                 
                 end_time = time.time()
                 results.append({
                     'id': i,
                     'input': item,
                     'case': case,
-                    'output': response,  # 使用模型的实际响应作为输出
-                    'score': score,
+                    'runs': runs,  # 所有运行的结果
+                    'final_score': final_score,  # 最终得分
                     'latency': end_time - start_time
                 })
             except Exception as e:
@@ -47,6 +60,52 @@ class NativeBackend(BaseBackend):
                 })
         
         return results
+    
+    def _determine_final_score(self, runs, strategy):
+        """根据策略确定最终得分"""
+        scores = [run['score'] for run in runs]
+        
+        if strategy == 'highest':
+            # 取最高分
+            return max(scores, key=self._score_to_value)
+        elif strategy == 'lowest':
+            # 取最低分
+            return min(scores, key=self._score_to_value)
+        elif strategy == 'average':
+            # 取平均值
+            score_values = [self._score_to_value(score) for score in scores]
+            avg_value = sum(score_values) / len(score_values)
+            return self._value_to_score(avg_value)
+        elif strategy == 'median':
+            # 取中位数
+            score_values = [self._score_to_value(score) for score in scores]
+            score_values.sort()
+            mid = len(score_values) // 2
+            median_value = score_values[mid] if len(score_values) % 2 == 1 else (score_values[mid-1] + score_values[mid]) / 2
+            return self._value_to_score(median_value)
+        else:
+            # 默认取最高分
+            return max(scores, key=self._score_to_value)
+    
+    def _score_to_value(self, score):
+        """将评分转换为数值"""
+        if score == 'A':
+            return 2
+        elif score == 'B':
+            return 1
+        elif score == 'C':
+            return 0
+        else:
+            return 0
+    
+    def _value_to_score(self, value):
+        """将数值转换为评分"""
+        if value >= 1.5:
+            return 'A'
+        elif value >= 0.5:
+            return 'B'
+        else:
+            return 'C'
     
     def execute(self, model, case, response=None):
         """执行案例评估
@@ -102,34 +161,8 @@ class NativeBackend(BaseBackend):
         if not response:
             response = model.generate(case['prompt'])
         
-        # 使用Chinese SimpleQA的评判提示词模板
-        judge_prompt = (f"请根据给定问题、标准答案和模型预测的答案来评估模型的回答是否正确。\n" 
-                       f"您的任务是将结果评定为：【正确】、【错误】或【未尝试】。\n\n" 
-                       f"以下是【正确】的答复示例：\n" 
-                       f"问题：贝拉克·奥巴马的孩子叫什么名字？\n" 
-                       f"标准答案：玛丽亚·奥巴马和萨莎·奥巴马\n" 
-                       f"模型预测1：Malia Obama and Sasha Obama\n" 
-                       f"（完整包含参考答案且不矛盾）→ 评定为【正确】\n\n" 
-                       f"以下是【错误】的答复示例：\n" 
-                       f"问题：巴拉克·奥巴马的孩子叫什么名字？\n" 
-                       f"标准答案：玛丽亚·奥巴马和萨莎·奥巴马\n" 
-                       f"模型预测：玛丽亚、萨莎和苏珊\n" 
-                       f"（包含矛盾信息）→ 评定为【错误】\n\n" 
-                       f"以下是【未尝试】的答复示例：\n" 
-                       f"问题：巴拉克·奥巴马的孩子叫什么名字？\n" 
-                       f"标准答案：玛丽亚·奥巴马和萨莎·奥巴马\n" 
-                       f"模型预测：我不知道。\n" 
-                       f"（未包含参考答案但也不矛盾）→ 评定为【未尝试】\n\n" 
-                       f"问题: {case['prompt']}\n" 
-                       f"正确答案: {case['answer']}\n" 
-                       f"预测答案: {response}\n\n" 
-                       f"将此新问题的预测答案评定为以下之一：\n" 
-                       f"A:【正确】\n" 
-                       f"B:【错误】\n" 
-                       f"C:【未尝试】\n\n" 
-                       f"只返回字母\"A\"、\"B\"或\"C\"，无须添加其他文本。")
-        
-        # 调用裁判模型
+        # 使用通用的评判提示词模板
+        judge_prompt = f"请评估以下模型对问题的回答是否正确。\n\n问题：{case['prompt']}\n\n参考答案：{case['answer']}\n\n模型回答：{response}\n\n评估标准：如果模型回答与参考答案意思一致，返回1.0；否则返回0.0。"
         judge_response = self.judge_model.generate(judge_prompt)
         
         # 解析裁判模型的回答
@@ -142,18 +175,13 @@ class NativeBackend(BaseBackend):
             # 调试信息
             print(f"Judge response: {judge_answer}")
             
-            # 返回对应的评分
-            if 'A' in judge_answer:
-                return 'A'  # 正确
-            elif 'B' in judge_answer:
-                return 'B'  # 错误
-            elif 'C' in judge_answer:
-                return 'C'  # 未尝试
+            if '1.0' in judge_answer or '正确' in judge_answer:
+                return 1.0
             else:
-                return 'C'  # 默认未尝试
+                return 0.0
         except Exception as e:
             print(f"Error parsing judge response: {e}")
-            return 'C'  # 出错时返回未尝试
+            return 0.0
     
     def get_backend_info(self):
         return {

@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
 from datasets import MMLUDataset, MCQDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset
-from backends import NativeBackend
+from backends import NativeBackend, ChineseSimpleQAEvaluator
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -75,7 +75,7 @@ def get_backend(config):
         else:
             # 新格式：直接使用backend字段
             backend_config = config['backend']
-            backend_name = 'NativeBackend'  # 默认使用NativeBackend
+            backend_name = backend_config.get('type', 'NativeBackend')  # 默认使用NativeBackend
     else:
         raise ValueError("Backend configuration not found")
     
@@ -89,6 +89,8 @@ def get_backend(config):
     
     if backend_name == 'NativeBackend':
         return NativeBackend(backend_config)
+    elif backend_name == 'ChineseSimpleQAEvaluator':
+        return ChineseSimpleQAEvaluator(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 
@@ -138,7 +140,9 @@ def main():
     # Run evaluation
     print("\nRunning evaluation...")
     max_samples = config.get('evaluation', {}).get('max_samples', None)
-    results = backend.evaluate(model, dataset, max_samples)
+    num_runs = config.get('evaluation', {}).get('num_runs', 1)
+    scoring_strategy = config.get('evaluation', {}).get('scoring_strategy', 'highest')
+    results = backend.evaluate(model, dataset, max_samples, num_runs, scoring_strategy)
     print(f"Evaluation completed. Results: {len(results)} items")
     
     # Generate report
@@ -184,7 +188,7 @@ def calculate_chinese_simpleqa_metrics(results, output_path):
     not_attempted = 0
     
     for result in results:
-        score = result.get('score')
+        score = result.get('final_score', result.get('score'))
         if score == 'A':
             correct += 1
         elif score == 'B':
