@@ -9,131 +9,6 @@ class NativeBackend(BaseBackend):
         self.eval_type = config.get('eval_type', 'rule')  # rule 或 model
         self.judge_model = config.get('judge_model', None)  # 裁判模型
     
-    def evaluate(self, model, dataset, max_samples=None, num_runs=1, scoring_strategy='highest'):
-        results = []
-        dataset.load()
-        data = dataset.get_data()
-        
-        # 限制样本数量
-        if max_samples is not None:
-            data = data[:max_samples]
-        
-        for i, item in enumerate(data):
-            start_time = time.time()
-            try:
-                # 转换为标准案例格式
-                case = dataset.convert_to_case(item)
-                
-                # 执行多次评测
-                runs = []
-                for run in range(num_runs):
-                    # 生成模型响应
-                    response = model.generate(case['prompt'])
-                    # 执行评估
-                    score = self.execute(model, case, response)
-                    runs.append({
-                        'run_id': run,
-                        'output': response,
-                        'score': score
-                    })
-                
-                # 根据策略确定最终得分
-                final_score = self._determine_final_score(runs, scoring_strategy)
-                
-                end_time = time.time()
-                results.append({
-                    'id': i,
-                    'input': item,
-                    'case': case,
-                    'runs': runs,  # 所有运行的结果
-                    'final_score': final_score,  # 最终得分
-                    'latency': end_time - start_time
-                })
-            except Exception as e:
-                end_time = time.time()
-                results.append({
-                    'id': i,
-                    'input': item,
-                    'output': None,
-                    'error': str(e),
-                    'latency': end_time - start_time
-                })
-        
-        return results
-    
-    async def async_evaluate(self, model, dataset, max_samples=None, num_runs=1, scoring_strategy='highest', concurrency_limit=5):
-        """异步评测方法"""
-        results = []
-        dataset.load()
-        data = dataset.get_data()
-        
-        # 限制样本数量
-        if max_samples is not None:
-            data = data[:max_samples]
-        
-        # 创建信号量控制并发
-        semaphore = asyncio.Semaphore(concurrency_limit)
-        
-        # 定义处理单个样本的异步函数
-        async def process_item(i, item):
-            async with semaphore:
-                start_time = time.time()
-                try:
-                    # 转换为标准案例格式
-                    case = dataset.convert_to_case(item)
-                    
-                    # 执行多次评测
-                    runs = []
-                    # 并发执行多次评测
-                    run_tasks = []
-                    for run in range(num_runs):
-                        run_tasks.append(self._async_run_evaluation(model, case, run))
-                    runs = await asyncio.gather(*run_tasks)
-                    
-                    # 根据策略确定最终得分
-                    final_score = self._determine_final_score(runs, scoring_strategy)
-                    
-                    end_time = time.time()
-                    return {
-                        'id': i,
-                        'input': item,
-                        'case': case,
-                        'runs': runs,  # 所有运行的结果
-                        'final_score': final_score,  # 最终得分
-                        'latency': end_time - start_time
-                    }
-                except Exception as e:
-                    end_time = time.time()
-                    return {
-                        'id': i,
-                        'input': item,
-                        'output': None,
-                        'error': str(e),
-                        'latency': end_time - start_time
-                    }
-        
-        # 并发处理所有样本
-        tasks = []
-        for i, item in enumerate(data):
-            tasks.append(process_item(i, item))
-        
-        # 等待所有任务完成
-        results = await asyncio.gather(*tasks)
-        
-        return results
-    
-    async def _async_run_evaluation(self, model, case, run_id):
-        """异步执行单次评测"""
-        # 生成模型响应
-        response = await model.async_generate(case['prompt'])
-        # 执行评估
-        score = await self.async_execute(model, case, response)
-        return {
-            'run_id': run_id,
-            'output': response,
-            'score': score
-        }
-    
     async def async_execute(self, model, case, response=None):
         """异步执行案例评估"""
         try:
@@ -205,18 +80,30 @@ class NativeBackend(BaseBackend):
             return max(scores, key=self._score_to_value)
     
     def _score_to_value(self, score):
-        """将评分转换为数值"""
-        if score == 'A':
-            return 2
-        elif score == 'B':
-            return 1
-        elif score == 'C':
-            return 0
+        """将评分转换为数值，支持多种类型"""
+        # 处理字符串类型
+        if isinstance(score, str):
+            if score == 'A':
+                return 2
+            elif score == 'B':
+                return 1
+            elif score == 'C':
+                return 0
+            else:
+                return 0
+        # 处理数值类型
+        elif isinstance(score, (int, float)):
+            return float(score)
+        # 处理字典类型
+        elif isinstance(score, dict):
+            return score.get('value', 0)
+        # 其他类型
         else:
             return 0
     
     def _value_to_score(self, value):
-        """将数值转换为评分"""
+        """将数值转换为评分，支持多种类型"""
+        # 如果原始评分是字符串类型，转换为字符串
         if value >= 1.5:
             return 'A'
         elif value >= 0.5:

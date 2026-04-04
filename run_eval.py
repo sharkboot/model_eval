@@ -2,6 +2,8 @@ import json
 import sys
 import os
 import argparse
+import time
+import asyncio
 
 # Add the project root to Python path
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -119,6 +121,189 @@ def get_visualizer(config):
     else:
         raise ValueError(f"Unknown visualizer type: {viz_name}")
 
+def _score_to_value(score):
+    """将评分转换为数值，支持多种类型"""
+    # 处理字符串类型
+    if isinstance(score, str):
+        if score == 'A':
+            return 2
+        elif score == 'B':
+            return 1
+        elif score == 'C':
+            return 0
+        else:
+            return 0
+    # 处理数值类型
+    elif isinstance(score, (int, float)):
+        return float(score)
+    # 处理字典类型
+    elif isinstance(score, dict):
+        return score.get('value', 0)
+    # 其他类型
+    else:
+        return 0
+
+def _value_to_score(value):
+    """将数值转换为评分，支持多种类型"""
+    if value >= 1.5:
+        return 'A'
+    elif value >= 0.5:
+        return 'B'
+    else:
+        return 'C'
+
+def _determine_final_score(runs, strategy):
+    """根据策略确定最终得分"""
+    scores = [run['score'] for run in runs]
+    
+    if strategy == 'highest':
+        # 取最高分
+        return max(scores, key=_score_to_value)
+    elif strategy == 'lowest':
+        # 取最低分
+        return min(scores, key=_score_to_value)
+    elif strategy == 'average':
+        # 取平均值
+        score_values = [_score_to_value(score) for score in scores]
+        avg_value = sum(score_values) / len(score_values)
+        return _value_to_score(avg_value)
+    elif strategy == 'median':
+        # 取中位数
+        score_values = [_score_to_value(score) for score in scores]
+        score_values.sort()
+        mid = len(score_values) // 2
+        median_value = score_values[mid] if len(score_values) % 2 == 1 else (score_values[mid-1] + score_values[mid]) / 2
+        return _value_to_score(median_value)
+    else:
+        # 默认取最高分
+        return max(scores, key=_score_to_value)
+
+def evaluate_sync(model, dataset, backend, max_samples=None, num_runs=1, scoring_strategy='highest'):
+    """同步评估"""
+    results = []
+    dataset.load()
+    data = dataset.get_data()
+    
+    # 限制样本数量
+    if max_samples is not None:
+        data = data[:max_samples]
+    
+    for i, item in enumerate(data):
+        start_time = time.time()
+        try:
+            # 转换为标准案例格式
+            case = dataset.convert_to_case(item)
+            
+            # 执行多次评测
+            runs = []
+            for run in range(num_runs):
+                # 生成模型响应
+                response = model.generate(case['prompt'])
+                # 执行评估
+                score = backend.execute(model, case, response)
+                runs.append({
+                    'run_id': run,
+                    'output': response,
+                    'score': score
+                })
+            
+            # 根据策略确定最终得分
+            final_score = _determine_final_score(runs, scoring_strategy)
+            
+            end_time = time.time()
+            results.append({
+                'id': i,
+                'input': item,
+                'case': case,
+                'runs': runs,  # 所有运行的结果
+                'final_score': final_score,  # 最终得分
+                'latency': end_time - start_time
+            })
+        except Exception as e:
+            end_time = time.time()
+            results.append({
+                'id': i,
+                'input': item,
+                'output': None,
+                'error': str(e),
+                'latency': end_time - start_time
+            })
+    
+    return results
+
+async def evaluate_async(model, dataset, backend, max_samples=None, num_runs=1, scoring_strategy='highest', concurrency_limit=5):
+    """异步评估"""
+    results = []
+    dataset.load()
+    data = dataset.get_data()
+    
+    # 限制样本数量
+    if max_samples is not None:
+        data = data[:max_samples]
+    
+    # 创建信号量控制并发
+    semaphore = asyncio.Semaphore(concurrency_limit)
+    
+    # 定义处理单个样本的异步函数
+    async def process_item(i, item):
+        async with semaphore:
+            start_time = time.time()
+            try:
+                # 转换为标准案例格式
+                case = dataset.convert_to_case(item)
+                
+                # 执行多次评测
+                runs = []
+                # 并发执行多次评测
+                run_tasks = []
+                for run in range(num_runs):
+                    run_tasks.append(_async_run_evaluation(model, backend, case, run))
+                runs = await asyncio.gather(*run_tasks)
+                
+                # 根据策略确定最终得分
+                final_score = _determine_final_score(runs, scoring_strategy)
+                
+                end_time = time.time()
+                return {
+                    'id': i,
+                    'input': item,
+                    'case': case,
+                    'runs': runs,  # 所有运行的结果
+                    'final_score': final_score,  # 最终得分
+                    'latency': end_time - start_time
+                }
+            except Exception as e:
+                end_time = time.time()
+                return {
+                    'id': i,
+                    'input': item,
+                    'output': None,
+                    'error': str(e),
+                    'latency': end_time - start_time
+                }
+    
+    # 并发处理所有样本
+    tasks = []
+    for i, item in enumerate(data):
+        tasks.append(process_item(i, item))
+    
+    # 等待所有任务完成
+    results = await asyncio.gather(*tasks)
+    
+    return results
+
+async def _async_run_evaluation(model, backend, case, run_id):
+    """异步执行单次评测"""
+    # 生成模型响应
+    response = await model.async_generate(case['prompt'])
+    # 执行评估
+    score = await backend.async_execute(model, case, response)
+    return {
+        'run_id': run_id,
+        'output': response,
+        'score': score
+    }
+
 def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Model Evaluation Framework')
@@ -142,7 +327,18 @@ def main():
     max_samples = config.get('evaluation', {}).get('max_samples', None)
     num_runs = config.get('evaluation', {}).get('num_runs', 1)
     scoring_strategy = config.get('evaluation', {}).get('scoring_strategy', 'highest')
-    results = backend.evaluate(model, dataset, max_samples, num_runs, scoring_strategy)
+    use_async = config.get('evaluation', {}).get('async', False)
+    concurrency_limit = config.get('evaluation', {}).get('concurrency_limit', 5)
+    
+    if use_async:
+        # 异步评估
+        print(f"Running async evaluation with concurrency limit: {concurrency_limit}")
+        results = asyncio.run(evaluate_async(model, dataset, backend, max_samples, num_runs, scoring_strategy, concurrency_limit))
+    else:
+        # 同步评估
+        print("Running sync evaluation")
+        results = evaluate_sync(model, dataset, backend, max_samples, num_runs, scoring_strategy)
+    
     print(f"Evaluation completed. Results: {len(results)} items")
     
     # Generate report
