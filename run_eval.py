@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
 from datasets import MMLUDataset, MCQDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset
-from backends import NativeBackend, ChineseSimpleQAEvaluator
+from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -93,6 +93,10 @@ def get_backend(config):
         return NativeBackend(backend_config)
     elif backend_name == 'ChineseSimpleQAEvaluator':
         return ChineseSimpleQAEvaluator(backend_config)
+    elif backend_name == 'AgentBackend':
+        return AgentBackend(backend_config)
+    elif backend_name == 'MultimodalBackend':
+        return MultimodalBackend(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 

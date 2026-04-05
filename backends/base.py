@@ -5,9 +5,16 @@ class BaseBackend:
     def get_backend_info(self):
         raise NotImplementedError("Subclass must implement get_backend_info method")
     
-    def execute(self, model, case):
+    def execute(self, model, case, response=None):
         """执行案例评估
         输入：案例dict，包含prompt、answer、metadata字段
         输出：评估分数
         """
         raise NotImplementedError("Subclass must implement execute method")
+    
+    async def async_execute(self, model, case, response=None):
+        """异步执行案例评估
+        输入：案例dict，包含prompt、answer、metadata字段
+        输出：评估分数
+        """
+        raise NotImplementedError("Subclass must implement async_execute method")
