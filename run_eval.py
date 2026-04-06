@@ -9,8 +9,8 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
-from datasets import MMLUDataset, MCQDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset
-from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend
+from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset
+from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -54,16 +54,14 @@ def get_dataset(config):
         dataset_config = config['dataset']
         dataset_name = dataset_config['type']
     
-    if dataset_name == 'MMLUDataset':
-        return MMLUDataset(dataset_config)
-    elif dataset_name == 'MCQDataset':
-        return MCQDataset(dataset_config)
-    elif dataset_name == 'StandardDataset':
+    if dataset_name == 'StandardDataset':
         return StandardDataset(dataset_config)
     elif dataset_name == 'CustomDataset':
         return CustomDataset(dataset_config)
     elif dataset_name == 'chinese_simpleqa':
         return ChineseSimpleQADataset(dataset_config)
+    elif dataset_name == 'writing_bench':
+        return WritingBenchDataset(dataset_config)
     else:
         raise ValueError(f"Unknown dataset type: {dataset_name}")
 
@@ -97,6 +95,8 @@ def get_backend(config):
         return AgentBackend(backend_config)
     elif backend_name == 'MultimodalBackend':
         return MultimodalBackend(backend_config)
+    elif backend_name == 'WritingBenchEvaluator':
+        return WritingBenchEvaluator(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 
@@ -356,6 +356,9 @@ def main():
         # 计算Chinese SimpleQA特定指标
         if config['dataset']['type'] == 'chinese_simpleqa':
             calculate_chinese_simpleqa_metrics(results, output_path)
+        # 计算WritingBench特定指标
+        elif config['dataset']['type'] == 'writing_bench':
+            calculate_writing_bench_metrics(results, output_path)
     else:
         # 兼容旧格式
         report = get_report(config)
@@ -430,6 +433,50 @@ def calculate_chinese_simpleqa_metrics(results, output_path):
     print(f"IN (Incorrect): {IN:.4f}")
     print(f"CGA (Correct given Attempted): {CGA:.4f}")
     print(f"F-score: {F_score:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_writing_bench_metrics(results, output_path):
+    """计算WritingBench的特定指标"""
+    total = len(results)
+    total_score = 0.0
+    domain_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        total_score += score
+        
+        # 按领域统计
+        domain = result.get('case', {}).get('metadata', {}).get('domain', 'Unknown')
+        if domain not in domain_scores:
+            domain_scores[domain] = {'total': 0, 'score': 0.0}
+        domain_scores[domain]['total'] += 1
+        domain_scores[domain]['score'] += score
+    
+    # 计算平均分数
+    average_score = total_score / total if total > 0 else 0.0
+    
+    # 计算各领域的平均分数
+    domain_averages = {}
+    for domain, data in domain_scores.items():
+        domain_averages[domain] = data['score'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'average_score': average_score,
+        'domain_scores': domain_averages
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nWritingBench Metrics:")
+    print(f"Total: {total}")
+    print(f"Average Score: {average_score:.4f}")
+    print("Domain Scores:")
+    for domain, score in domain_averages.items():
+        print(f"  {domain}: {score:.4f}")
     print(f"Metrics saved to: {metrics_path}")
 
 if __name__ == "__main__":

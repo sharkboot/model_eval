@@ -1,19 +1,13 @@
 from .base import BaseDataset
-from .standard import StandardDataset, MMLUDataset, GSM8KDataset, CEvalDataset, HumanEvalDataset
-from .custom import CustomDataset, MCQDataset, QADataset, FunctionCallDataset, VQADataset
+from .standard import StandardDataset
+from .custom import CustomDataset
 from .chinese_simpleqa import ChineseSimpleQADataset
+from .writing_bench import WritingBenchDataset
 
 __all__ = [
     'BaseDataset',
     'StandardDataset',
-    'MMLUDataset',
-    'GSM8KDataset',
-    'CEvalDataset',
-    'HumanEvalDataset',
     'CustomDataset',
-    'MCQDataset',
-    'QADataset',
-    'FunctionCallDataset',
-    'VQADataset',
-    'ChineseSimpleQADataset'
+    'ChineseSimpleQADataset',
+    'WritingBenchDataset'
 ]
