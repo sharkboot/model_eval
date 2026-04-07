@@ -9,8 +9,8 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
-from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset
-from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator
+from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset
+from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -62,6 +62,10 @@ def get_dataset(config):
         return ChineseSimpleQADataset(dataset_config)
     elif dataset_name == 'writing_bench':
         return WritingBenchDataset(dataset_config)
+    elif dataset_name == 'ceval':
+        return CEvalDataset(dataset_config)
+    elif dataset_name == 'aime':
+        return AIMEDataset(dataset_config)
     else:
         raise ValueError(f"Unknown dataset type: {dataset_name}")
 
@@ -97,6 +101,10 @@ def get_backend(config):
         return MultimodalBackend(backend_config)
     elif backend_name == 'WritingBenchEvaluator':
         return WritingBenchEvaluator(backend_config)
+    elif backend_name == 'CEvalEvaluator':
+        return CEvalEvaluator(backend_config)
+    elif backend_name == 'AIMEEvaluator':
+        return AIMEEvaluator(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 
@@ -359,6 +367,12 @@ def main():
         # 计算WritingBench特定指标
         elif config['dataset']['type'] == 'writing_bench':
             calculate_writing_bench_metrics(results, output_path)
+        # 计算C-Eval特定指标
+        elif config['dataset']['type'] == 'ceval':
+            calculate_ceval_metrics(results, output_path)
+        # 计算AIME特定指标
+        elif config['dataset']['type'] == 'aime':
+            calculate_aime_metrics(results, output_path)
     else:
         # 兼容旧格式
         report = get_report(config)
@@ -477,6 +491,148 @@ def calculate_writing_bench_metrics(results, output_path):
     print("Domain Scores:")
     for domain, score in domain_averages.items():
         print(f"  {domain}: {score:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_ceval_metrics(results, output_path):
+    """计算C-Eval的特定指标"""
+    total = len(results)
+    correct = 0
+    incorrect = 0
+    subject_scores = {}
+    category_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        if score == 1.0:
+            correct += 1
+        else:
+            incorrect += 1
+        
+        # 按学科统计
+        subject = result.get('case', {}).get('metadata', {}).get('subject', 'Unknown')
+        if subject not in subject_scores:
+            subject_scores[subject] = {'total': 0, 'correct': 0}
+        subject_scores[subject]['total'] += 1
+        if score == 1.0:
+            subject_scores[subject]['correct'] += 1
+        
+        # 按分类统计
+        category = result.get('case', {}).get('metadata', {}).get('category', 'Unknown')
+        if category not in category_scores:
+            category_scores[category] = {'total': 0, 'correct': 0}
+        category_scores[category]['total'] += 1
+        if score == 1.0:
+            category_scores[category]['correct'] += 1
+    
+    # 计算准确率
+    accuracy = correct / total if total > 0 else 0.0
+    
+    # 计算各学科的准确率
+    subject_accuracies = {}
+    for subject, data in subject_scores.items():
+        subject_accuracies[subject] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各类别的准确率
+    category_accuracies = {}
+    for category, data in category_scores.items():
+        category_accuracies[category] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'accuracy': accuracy,
+        'subject_accuracies': subject_accuracies,
+        'category_accuracies': category_accuracies
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nC-Eval Metrics:")
+    print(f"Total: {total}")
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print("Subject Accuracies:")
+    for subject, acc in subject_accuracies.items():
+        print(f"  {subject}: {acc:.4f}")
+    print("Category Accuracies:")
+    for category, acc in category_accuracies.items():
+        print(f"  {category}: {acc:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_aime_metrics(results, output_path):
+    """计算AIME的特定指标"""
+    total = len(results)
+    correct = 0
+    incorrect = 0
+    year_scores = {}
+    problem_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        if score == 1.0:
+            correct += 1
+        else:
+            incorrect += 1
+        
+        # 按年份统计
+        year = result.get('case', {}).get('metadata', {}).get('year', 'Unknown')
+        if year not in year_scores:
+            year_scores[year] = {'total': 0, 'correct': 0}
+        year_scores[year]['total'] += 1
+        if score == 1.0:
+            year_scores[year]['correct'] += 1
+        
+        # 按问题编号统计
+        problem_number = result.get('case', {}).get('metadata', {}).get('problem_number', 'Unknown')
+        if problem_number not in problem_scores:
+            problem_scores[problem_number] = {'total': 0, 'correct': 0}
+        problem_scores[problem_number]['total'] += 1
+        if score == 1.0:
+            problem_scores[problem_number]['correct'] += 1
+    
+    # 计算准确率
+    accuracy = correct / total if total > 0 else 0.0
+    
+    # 计算各年份的准确率
+    year_accuracies = {}
+    for year, data in year_scores.items():
+        year_accuracies[year] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各问题编号的准确率
+    problem_accuracies = {}
+    for problem_number, data in problem_scores.items():
+        problem_accuracies[problem_number] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'accuracy': accuracy,
+        'year_accuracies': year_accuracies,
+        'problem_accuracies': problem_accuracies
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nAIME Metrics:")
+    print(f"Total: {total}")
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print("Year Accuracies:")
+    for year, acc in year_accuracies.items():
+        print(f"  {year}: {acc:.4f}")
+    print("Problem Accuracies:")
+    for problem_number, acc in problem_accuracies.items():
+        print(f"  Problem {problem_number}: {acc:.4f}")
     print(f"Metrics saved to: {metrics_path}")
 
 if __name__ == "__main__":
