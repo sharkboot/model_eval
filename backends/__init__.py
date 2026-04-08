@@ -6,6 +6,7 @@ from .multimodal_backend import MultimodalBackend
 from .writing_bench_evaluator import WritingBenchEvaluator
 from .ceval_evaluator import CEvalEvaluator
 from .aime_evaluator import AIMEEvaluator
+from .hmmt_evaluator import HMMTEvaluator
 
 __all__ = [
     'BaseBackend',
@@ -15,5 +16,6 @@ __all__ = [
     'MultimodalBackend',
     'WritingBenchEvaluator',
     'CEvalEvaluator',
-    'AIMEEvaluator'
+    'AIMEEvaluator',
+    'HMMTEvaluator'
 ]

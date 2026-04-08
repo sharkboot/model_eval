@@ -9,8 +9,8 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
-from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset
-from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator
+from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset, HMMTDataset
+from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -66,6 +66,8 @@ def get_dataset(config):
         return CEvalDataset(dataset_config)
     elif dataset_name == 'aime':
         return AIMEDataset(dataset_config)
+    elif dataset_name == 'hmmt':
+        return HMMTDataset(dataset_config)
     else:
         raise ValueError(f"Unknown dataset type: {dataset_name}")
 
@@ -105,6 +107,8 @@ def get_backend(config):
         return CEvalEvaluator(backend_config)
     elif backend_name == 'AIMEEvaluator':
         return AIMEEvaluator(backend_config)
+    elif backend_name == 'HMMTEvaluator':
+        return HMMTEvaluator(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 
@@ -373,6 +377,9 @@ def main():
         # 计算AIME特定指标
         elif config['dataset']['type'] == 'aime':
             calculate_aime_metrics(results, output_path)
+        # 计算HMMT特定指标
+        elif config['dataset']['type'] == 'hmmt':
+            calculate_hmmt_metrics(results, output_path)
     else:
         # 兼容旧格式
         report = get_report(config)
@@ -633,6 +640,95 @@ def calculate_aime_metrics(results, output_path):
     print("Problem Accuracies:")
     for problem_number, acc in problem_accuracies.items():
         print(f"  Problem {problem_number}: {acc:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_hmmt_metrics(results, output_path):
+    """计算HMMT的特定指标"""
+    total = len(results)
+    correct = 0
+    incorrect = 0
+    category_scores = {}
+    round_scores = {}
+    year_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        if score == 1.0:
+            correct += 1
+        else:
+            incorrect += 1
+        
+        # 按类别统计
+        category = result.get('case', {}).get('metadata', {}).get('category', 'Unknown')
+        if category not in category_scores:
+            category_scores[category] = {'total': 0, 'correct': 0}
+        category_scores[category]['total'] += 1
+        if score == 1.0:
+            category_scores[category]['correct'] += 1
+        
+        # 按轮次类型统计
+        round_type = result.get('case', {}).get('metadata', {}).get('round_type', 'Unknown')
+        if round_type not in round_scores:
+            round_scores[round_type] = {'total': 0, 'correct': 0}
+        round_scores[round_type]['total'] += 1
+        if score == 1.0:
+            round_scores[round_type]['correct'] += 1
+        
+        # 按年份统计
+        year = result.get('case', {}).get('metadata', {}).get('year', 'Unknown')
+        if year not in year_scores:
+            year_scores[year] = {'total': 0, 'correct': 0}
+        year_scores[year]['total'] += 1
+        if score == 1.0:
+            year_scores[year]['correct'] += 1
+    
+    # 计算准确率
+    accuracy = correct / total if total > 0 else 0.0
+    
+    # 计算各类别的准确率
+    category_accuracies = {}
+    for category, data in category_scores.items():
+        category_accuracies[category] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各轮次类型的准确率
+    round_accuracies = {}
+    for round_type, data in round_scores.items():
+        round_accuracies[round_type] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各年份的准确率
+    year_accuracies = {}
+    for year, data in year_scores.items():
+        year_accuracies[year] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'accuracy': accuracy,
+        'category_accuracies': category_accuracies,
+        'round_accuracies': round_accuracies,
+        'year_accuracies': year_accuracies
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nHMMT Metrics:")
+    print(f"Total: {total}")
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print("Category Accuracies:")
+    for category, acc in category_accuracies.items():
+        print(f"  {category}: {acc:.4f}")
+    print("Round Type Accuracies:")
+    for round_type, acc in round_accuracies.items():
+        print(f"  {round_type}: {acc:.4f}")
+    print("Year Accuracies:")
+    for year, acc in year_accuracies.items():
+        print(f"  {year}: {acc:.4f}")
     print(f"Metrics saved to: {metrics_path}")
 
 if __name__ == "__main__":

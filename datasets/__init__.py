@@ -5,6 +5,7 @@ from .chinese_simpleqa import ChineseSimpleQADataset
 from .writing_bench import WritingBenchDataset
 from .ceval import CEvalDataset
 from .aime import AIMEDataset
+from .hmmt import HMMTDataset
 
 __all__ = [
     'BaseDataset',
@@ -13,5 +14,6 @@ __all__ = [
     'ChineseSimpleQADataset',
     'WritingBenchDataset',
     'CEvalDataset',
-    'AIMEDataset'
+    'AIMEDataset',
+    'HMMTDataset'
 ]
