@@ -9,8 +9,8 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
-from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset, HMMTDataset
-from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator
+from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset, HMMTDataset, AMODataset, IMODataset
+from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator, AMOEvaluator, IMOMEvaluator
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -68,6 +68,10 @@ def get_dataset(config):
         return AIMEDataset(dataset_config)
     elif dataset_name == 'hmmt':
         return HMMTDataset(dataset_config)
+    elif dataset_name == 'amo':
+        return AMODataset(dataset_config)
+    elif dataset_name == 'imo':
+        return IMODataset(dataset_config)
     else:
         raise ValueError(f"Unknown dataset type: {dataset_name}")
 
@@ -109,6 +113,10 @@ def get_backend(config):
         return AIMEEvaluator(backend_config)
     elif backend_name == 'HMMTEvaluator':
         return HMMTEvaluator(backend_config)
+    elif backend_name == 'AMOEvaluator':
+        return AMOEvaluator(backend_config)
+    elif backend_name == 'IMOMEvaluator':
+        return IMOMEvaluator(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 
@@ -380,6 +388,12 @@ def main():
         # 计算HMMT特定指标
         elif config['dataset']['type'] == 'hmmt':
             calculate_hmmt_metrics(results, output_path)
+        # 计算AMO特定指标
+        elif config['dataset']['type'] == 'amo':
+            calculate_amo_metrics(results, output_path)
+        # 计算IMO特定指标
+        elif config['dataset']['type'] == 'imo':
+            calculate_imo_metrics(results, output_path)
     else:
         # 兼容旧格式
         report = get_report(config)
@@ -729,6 +743,184 @@ def calculate_hmmt_metrics(results, output_path):
     print("Year Accuracies:")
     for year, acc in year_accuracies.items():
         print(f"  {year}: {acc:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_amo_metrics(results, output_path):
+    """计算AMO的特定指标"""
+    total = len(results)
+    correct = 0
+    incorrect = 0
+    category_scores = {}
+    problem_type_scores = {}
+    year_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        if score == 1.0:
+            correct += 1
+        else:
+            incorrect += 1
+        
+        # 按类别统计
+        category = result.get('case', {}).get('metadata', {}).get('category', 'Unknown')
+        if category not in category_scores:
+            category_scores[category] = {'total': 0, 'correct': 0}
+        category_scores[category]['total'] += 1
+        if score == 1.0:
+            category_scores[category]['correct'] += 1
+        
+        # 按题目类型统计
+        problem_type = result.get('case', {}).get('metadata', {}).get('problem_type', 'Unknown')
+        if problem_type not in problem_type_scores:
+            problem_type_scores[problem_type] = {'total': 0, 'correct': 0}
+        problem_type_scores[problem_type]['total'] += 1
+        if score == 1.0:
+            problem_type_scores[problem_type]['correct'] += 1
+        
+        # 按年份统计
+        year = result.get('case', {}).get('metadata', {}).get('year', 'Unknown')
+        if year not in year_scores:
+            year_scores[year] = {'total': 0, 'correct': 0}
+        year_scores[year]['total'] += 1
+        if score == 1.0:
+            year_scores[year]['correct'] += 1
+    
+    # 计算准确率
+    accuracy = correct / total if total > 0 else 0.0
+    
+    # 计算各类别的准确率
+    category_accuracies = {}
+    for category, data in category_scores.items():
+        category_accuracies[category] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各题目类型的准确率
+    problem_type_accuracies = {}
+    for problem_type, data in problem_type_scores.items():
+        problem_type_accuracies[problem_type] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各年份的准确率
+    year_accuracies = {}
+    for year, data in year_scores.items():
+        year_accuracies[year] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'accuracy': accuracy,
+        'category_accuracies': category_accuracies,
+        'problem_type_accuracies': problem_type_accuracies,
+        'year_accuracies': year_accuracies
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nAMO Metrics:")
+    print(f"Total: {total}")
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print("Category Accuracies:")
+    for category, acc in category_accuracies.items():
+        print(f"  {category}: {acc:.4f}")
+    print("Problem Type Accuracies:")
+    for problem_type, acc in problem_type_accuracies.items():
+        print(f"  {problem_type}: {acc:.4f}")
+    print("Year Accuracies:")
+    for year, acc in year_accuracies.items():
+        print(f"  {year}: {acc:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_imo_metrics(results, output_path):
+    """计算IMO的特定指标"""
+    total = len(results)
+    correct = 0
+    incorrect = 0
+    category_scores = {}
+    year_scores = {}
+    country_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        if score == 1.0:
+            correct += 1
+        else:
+            incorrect += 1
+        
+        # 按类别统计
+        category = result.get('case', {}).get('metadata', {}).get('category', 'Unknown')
+        if category not in category_scores:
+            category_scores[category] = {'total': 0, 'correct': 0}
+        category_scores[category]['total'] += 1
+        if score == 1.0:
+            category_scores[category]['correct'] += 1
+        
+        # 按年份统计
+        year = result.get('case', {}).get('metadata', {}).get('year', 'Unknown')
+        if year not in year_scores:
+            year_scores[year] = {'total': 0, 'correct': 0}
+        year_scores[year]['total'] += 1
+        if score == 1.0:
+            year_scores[year]['correct'] += 1
+        
+        # 按国家统计
+        country = result.get('case', {}).get('metadata', {}).get('country', 'Unknown')
+        if country not in country_scores:
+            country_scores[country] = {'total': 0, 'correct': 0}
+        country_scores[country]['total'] += 1
+        if score == 1.0:
+            country_scores[country]['correct'] += 1
+    
+    # 计算准确率
+    accuracy = correct / total if total > 0 else 0.0
+    
+    # 计算各类别的准确率
+    category_accuracies = {}
+    for category, data in category_scores.items():
+        category_accuracies[category] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各年份的准确率
+    year_accuracies = {}
+    for year, data in year_scores.items():
+        year_accuracies[year] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各国的准确率
+    country_accuracies = {}
+    for country, data in country_scores.items():
+        country_accuracies[country] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'accuracy': accuracy,
+        'category_accuracies': category_accuracies,
+        'year_accuracies': year_accuracies,
+        'country_accuracies': country_accuracies
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nIMO Metrics:")
+    print(f"Total: {total}")
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print("Category Accuracies:")
+    for category, acc in category_accuracies.items():
+        print(f"  {category}: {acc:.4f}")
+    print("Year Accuracies:")
+    for year, acc in year_accuracies.items():
+        print(f"  {year}: {acc:.4f}")
+    print("Country Accuracies:")
+    for country, acc in country_accuracies.items():
+        print(f"  {country}: {acc:.4f}")
     print(f"Metrics saved to: {metrics_path}")
 
 if __name__ == "__main__":

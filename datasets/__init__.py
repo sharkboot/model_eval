@@ -6,6 +6,8 @@ from .writing_bench import WritingBenchDataset
 from .ceval import CEvalDataset
 from .aime import AIMEDataset
 from .hmmt import HMMTDataset
+from .amo import AMODataset
+from .imo import IMODataset
 
 __all__ = [
     'BaseDataset',
@@ -15,5 +17,7 @@ __all__ = [
     'WritingBenchDataset',
     'CEvalDataset',
     'AIMEDataset',
-    'HMMTDataset'
+    'HMMTDataset',
+    'AMODataset',
+    'IMODataset'
 ]

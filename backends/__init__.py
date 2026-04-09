@@ -7,6 +7,8 @@ from .writing_bench_evaluator import WritingBenchEvaluator
 from .ceval_evaluator import CEvalEvaluator
 from .aime_evaluator import AIMEEvaluator
 from .hmmt_evaluator import HMMTEvaluator
+from .amo_evaluator import AMOEvaluator
+from .imo_evaluator import IMOMEvaluator
 
 __all__ = [
     'BaseBackend',
@@ -17,5 +19,7 @@ __all__ = [
     'WritingBenchEvaluator',
     'CEvalEvaluator',
     'AIMEEvaluator',
-    'HMMTEvaluator'
+    'HMMTEvaluator',
+    'AMOEvaluator',
+    'IMOMEvaluator'
 ]
