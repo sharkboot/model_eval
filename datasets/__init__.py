@@ -8,6 +8,7 @@ from .aime import AIMEDataset
 from .hmmt import HMMTDataset
 from .amo import AMODataset
 from .imo import IMODataset
+from .supergpqa import SuperGPQADataset
 
 __all__ = [
     'BaseDataset',
@@ -19,5 +20,6 @@ __all__ = [
     'AIMEDataset',
     'HMMTDataset',
     'AMODataset',
-    'IMODataset'
+    'IMODataset',
+    'SuperGPQADataset'
 ]

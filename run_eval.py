@@ -9,8 +9,8 @@ import asyncio
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
-from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset, HMMTDataset, AMODataset, IMODataset
-from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator, AMOEvaluator, IMOMEvaluator
+from datasets import BaseDataset, StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset, HMMTDataset, AMODataset, IMODataset, SuperGPQADataset
+from backends import NativeBackend, ChineseSimpleQAEvaluator, AgentBackend, MultimodalBackend, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator, AMOEvaluator, IMOMEvaluator, SuperGPQAEvaluator
 from performance import ConcurrencyTest
 from reports import JSONReport, TableReport
 from visualization import GradioVisualizer
@@ -72,6 +72,8 @@ def get_dataset(config):
         return AMODataset(dataset_config)
     elif dataset_name == 'imo':
         return IMODataset(dataset_config)
+    elif dataset_name == 'supergpqa':
+        return SuperGPQADataset(dataset_config)
     else:
         raise ValueError(f"Unknown dataset type: {dataset_name}")
 
@@ -117,6 +119,8 @@ def get_backend(config):
         return AMOEvaluator(backend_config)
     elif backend_name == 'IMOMEvaluator':
         return IMOMEvaluator(backend_config)
+    elif backend_name == 'SuperGPQAEvaluator':
+        return SuperGPQAEvaluator(backend_config)
     else:
         raise ValueError(f"Unknown backend type: {backend_name}")
 
@@ -394,6 +398,9 @@ def main():
         # 计算IMO特定指标
         elif config['dataset']['type'] == 'imo':
             calculate_imo_metrics(results, output_path)
+        # 计算SUPERGPQA特定指标
+        elif config['dataset']['type'] == 'supergpqa':
+            calculate_supergpqa_metrics(results, output_path)
     else:
         # 兼容旧格式
         report = get_report(config)
@@ -921,6 +928,95 @@ def calculate_imo_metrics(results, output_path):
     print("Country Accuracies:")
     for country, acc in country_accuracies.items():
         print(f"  {country}: {acc:.4f}")
+    print(f"Metrics saved to: {metrics_path}")
+
+def calculate_supergpqa_metrics(results, output_path):
+    """计算SUPERGPQA的特定指标"""
+    total = len(results)
+    correct = 0
+    incorrect = 0
+    subject_scores = {}
+    field_scores = {}
+    discipline_scores = {}
+    
+    for result in results:
+        score = result.get('final_score', 0.0)
+        if score == 1.0:
+            correct += 1
+        else:
+            incorrect += 1
+        
+        # 按学科统计
+        subject = result.get('case', {}).get('metadata', {}).get('subject', 'Unknown')
+        if subject not in subject_scores:
+            subject_scores[subject] = {'total': 0, 'correct': 0}
+        subject_scores[subject]['total'] += 1
+        if score == 1.0:
+            subject_scores[subject]['correct'] += 1
+        
+        # 按领域统计
+        field = result.get('case', {}).get('metadata', {}).get('field', 'Unknown')
+        if field not in field_scores:
+            field_scores[field] = {'total': 0, 'correct': 0}
+        field_scores[field]['total'] += 1
+        if score == 1.0:
+            field_scores[field]['correct'] += 1
+        
+        # 按学科类别统计
+        discipline = result.get('case', {}).get('metadata', {}).get('discipline', 'Unknown')
+        if discipline not in discipline_scores:
+            discipline_scores[discipline] = {'total': 0, 'correct': 0}
+        discipline_scores[discipline]['total'] += 1
+        if score == 1.0:
+            discipline_scores[discipline]['correct'] += 1
+    
+    # 计算准确率
+    accuracy = correct / total if total > 0 else 0.0
+    
+    # 计算各学科的准确率
+    subject_accuracies = {}
+    for subject, data in subject_scores.items():
+        subject_accuracies[subject] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各领域的准确率
+    field_accuracies = {}
+    for field, data in field_scores.items():
+        field_accuracies[field] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    # 计算各学科类别的准确率
+    discipline_accuracies = {}
+    for discipline, data in discipline_scores.items():
+        discipline_accuracies[discipline] = data['correct'] / data['total'] if data['total'] > 0 else 0.0
+    
+    metrics = {
+        'total': total,
+        'correct': correct,
+        'incorrect': incorrect,
+        'accuracy': accuracy,
+        'subject_accuracies': subject_accuracies,
+        'field_accuracies': field_accuracies,
+        'discipline_accuracies': discipline_accuracies
+    }
+    
+    # 保存指标
+    metrics_path = output_path.replace('.json', '_metrics.json')
+    with open(metrics_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics, f, ensure_ascii=False, indent=2)
+    
+    print("\nSUPERGPQA Metrics:")
+    print(f"Total: {total}")
+    print(f"Correct: {correct}")
+    print(f"Incorrect: {incorrect}")
+    print(f"Accuracy: {accuracy:.4f}")
+    print("Subject Accuracies:")
+    for subject, acc in subject_accuracies.items():
+        print(f"  {subject}: {acc:.4f}")
+    print("Field Accuracies:")
+    for field, acc in field_accuracies.items():
+        print(f"  {field}: {acc:.4f}")
+    print("Discipline Accuracies:")
+    for discipline, acc in discipline_accuracies.items():
+        print(f"  {discipline}: {acc:.4f}")
     print(f"Metrics saved to: {metrics_path}")
 
 if __name__ == "__main__":

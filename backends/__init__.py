@@ -9,6 +9,7 @@ from .aime_evaluator import AIMEEvaluator
 from .hmmt_evaluator import HMMTEvaluator
 from .amo_evaluator import AMOEvaluator
 from .imo_evaluator import IMOMEvaluator
+from .supergpqa_evaluator import SuperGPQAEvaluator
 
 __all__ = [
     'BaseBackend',
@@ -21,5 +22,6 @@ __all__ = [
     'AIMEEvaluator',
     'HMMTEvaluator',
     'AMOEvaluator',
-    'IMOMEvaluator'
+    'IMOMEvaluator',
+    'SuperGPQAEvaluator'
 ]
