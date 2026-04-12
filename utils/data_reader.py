@@ -5,13 +5,13 @@ import os
 
 def read_json(file_path):
     """读取JSON文件"""
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
         return json.load(f)
 
 def read_jsonl(file_path):
     """读取JSONL文件"""
     data = []
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
         for line in f:
             if line.strip():
                 data.append(json.loads(line))
@@ -20,7 +20,7 @@ def read_jsonl(file_path):
 def read_csv(file_path):
     """读取CSV文件"""
     data = []
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
         for row in reader:
             data.append(row)

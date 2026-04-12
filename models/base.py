@@ -1,9 +1,12 @@
-class BaseModel:
+from abc import ABC, abstractmethod
+from typing import List
+from utils.data_classes import ModelInput
+
+class BaseModel(ABC):
     def __init__(self, config):
         self.config = config
     
-    def generate(self, prompt, **kwargs):
-        raise NotImplementedError("Subclass must implement generate method")
-    
-    def get_model_info(self):
-        raise NotImplementedError("Subclass must implement get_model_info method")
+    @abstractmethod
+    def generate(self, inputs: List[ModelInput]) -> List[str]:
+        """接收提示词列表，返回生成文本列表"""
+        pass

@@ -9,6 +9,7 @@ from .hmmt import HMMTDataset
 from .amo import AMODataset
 from .imo import IMODataset
 from .supergpqa import SuperGPQADataset
+from .eq_bench import EQBenchDataset
 
 __all__ = [
     'BaseDataset',
@@ -21,5 +22,6 @@ __all__ = [
     'HMMTDataset',
     'AMODataset',
     'IMODataset',
-    'SuperGPQADataset'
+    'SuperGPQADataset',
+    'EQBenchDataset'
 ]

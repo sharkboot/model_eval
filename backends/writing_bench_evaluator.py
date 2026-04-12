@@ -1,133 +1,89 @@
-from .base import BaseBackend
+from .base import BaseEvaluator
+from utils.data_classes import EvaluationResult
 
-class WritingBenchEvaluator(BaseBackend):
+class WritingBenchEvaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)
         self.task_type = 'writing'
         self.eval_type = config.get('eval_type', 'model')  # rule 或 model
         self.judge_model = config.get('judge_model', None)  # 裁判模型
     
-    def execute(self, model, case, response=None):
+    def evaluate(self, data_item, model_output):
         """执行WritingBench案例评估
-        输入：案例dict，包含prompt、answer、metadata字段，metadata中可包含criteria等信息
-        输出：评估分数
+        输入：DataItem和模型输出
+        输出：EvaluationResult
         """
         try:
             if self.eval_type == 'rule':
                 # 规则评测
-                return self._rule_based_evaluation(model, case, response)
+                score = self._rule_based_evaluation(data_item, model_output)
             elif self.eval_type == 'model':
                 # 大模型评测（使用裁判模型）
-                return self._model_based_evaluation(model, case, response)
+                score = self._model_based_evaluation(data_item, model_output)
             else:
                 raise ValueError(f"Unsupported evaluation type: {self.eval_type}")
         except Exception as e:
-            return 0.0
+            score = 0.0
+        
+        metrics = {'score': score, 'accuracy': score}
+        
+        return EvaluationResult(
+            data_id=data_item.id,
+            evaluator_name='WritingBenchEvaluator',
+            raw_output=model_output,
+            metrics=metrics,
+            details={'task_type': self.task_type, 'eval_type': self.eval_type}
+        )
     
-    async def async_execute(self, model, case, response=None):
-        """异步执行WritingBench案例评估"""
-        try:
-            if self.eval_type == 'rule':
-                # 规则评测
-                return self._rule_based_evaluation(model, case, response)
-            elif self.eval_type == 'model':
-                # 大模型评测（使用裁判模型）
-                return await self._async_model_based_evaluation(model, case, response)
-            else:
-                raise ValueError(f"Unsupported evaluation type: {self.eval_type}")
-        except Exception as e:
-            return 0.0
-    
-    def _rule_based_evaluation(self, model, case, response=None):
+    def _rule_based_evaluation(self, data_item, model_output):
         """基于规则的WritingBench评测"""
-        if not response:
+        if not model_output:
             return 0.0
         
         # 简单的评分逻辑：根据长度和关键词匹配
         score = 0.0
         
         # 检查长度要求
-        length_requirement = case.get('metadata', {}).get('length', '')
+        length_requirement = data_item.metadata.get('length', '')
         if length_requirement:
             # 简单的长度检查
-            if len(response) > 500:
+            if len(model_output) > 500:
                 score += 0.3
         
         # 检查是否包含关键词
-        prompt = case['prompt']
-        if any(keyword in response for keyword in prompt.split()[:10]):
+        prompt = data_item.prompt
+        if any(keyword in model_output for keyword in prompt.split()[:10]):
             score += 0.3
         
         # 检查响应是否为空
-        if response and len(response) > 100:
+        if model_output and len(model_output) > 100:
             score += 0.4
         
         return min(score, 1.0)
     
-    def _model_based_evaluation(self, model, case, response=None):
+    def _model_based_evaluation(self, data_item, model_output):
         """基于大模型的WritingBench评测（使用裁判模型）"""
         if not self.judge_model:
             raise ValueError("Judge model is required for model-based evaluation")
         
-        if not response:
+        if not model_output:
             return 0.0
         
         # 获取评估标准
-        criteria = case.get('metadata', {}).get('criteria', [])
+        criteria = data_item.metadata.get('criteria', [])
         if not criteria:
             # 如果没有评估标准，生成默认的评估标准
-            criteria = self._generate_default_criteria(case['prompt'])
+            criteria = self._generate_default_criteria(data_item.prompt)
         
         # 使用WritingBench专用的评判提示词模板
-        judge_prompt = self._construct_judge_prompt(case['prompt'], response, criteria)
+        judge_prompt = self._construct_judge_prompt(data_item.prompt, model_output, criteria)
         
         # 调用裁判模型
-        judge_response = self.judge_model.generate(judge_prompt)
+        judge_response = self.judge_model.generate([{'prompt': judge_prompt}])[0]
         
         # 解析裁判模型的回答
         try:
-            if isinstance(judge_response, dict) and 'choices' in judge_response:
-                judge_answer = judge_response['choices'][0]['text'].strip()
-            else:
-                judge_answer = str(judge_response)
-            
-            # 提取评分
-            import re
-            score_match = re.search(r'\b([0-9]+(\.[0-9]+)?)\b', judge_answer)
-            if score_match:
-                return float(score_match.group(1)) / 10.0  # WritingBench使用10分制，转换为0-1.0
-            else:
-                return 0.0
-        except Exception as e:
-            print(f"Error parsing judge response: {e}")
-            return 0.0
-    
-    async def _async_model_based_evaluation(self, model, case, response=None):
-        """基于大模型的异步WritingBench评测（使用裁判模型）"""
-        if not self.judge_model:
-            raise ValueError("Judge model is required for model-based evaluation")
-        
-        if not response:
-            return 0.0
-        
-        # 获取评估标准
-        criteria = case.get('metadata', {}).get('criteria', [])
-        if not criteria:
-            # 如果没有评估标准，生成默认的评估标准
-            criteria = self._generate_default_criteria(case['prompt'])
-        
-        # 使用WritingBench专用的评判提示词模板
-        judge_prompt = self._construct_judge_prompt(case['prompt'], response, criteria)
-        
-        # 调用裁判模型
-        judge_response = await self.judge_model.async_generate(judge_prompt)
-        
-        # 解析裁判模型的回答
-        try:
-            if isinstance(judge_response, dict) and 'choices' in judge_response:
-                judge_answer = judge_response['choices'][0]['text'].strip()
-            else:
-                judge_answer = str(judge_response)
+            judge_answer = str(judge_response)
             
             # 提取评分
             import re
@@ -167,9 +123,4 @@ class WritingBenchEvaluator(BaseBackend):
                        f"评分理由：[理由]\n")
         
         return judge_prompt
-    
-    def get_backend_info(self):
-        return {
-            'backend_type': 'writing_bench',
-            'task_type': self.task_type
-        }
+

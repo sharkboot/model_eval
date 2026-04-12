@@ -1,17 +1,18 @@
 from .custom import CustomDataset
+from utils.data_classes import DataItem
 
 class CEvalDataset(CustomDataset):
     def __init__(self, config):
+        config['data_type'] = 'ceval'
         super().__init__(config)
-        self.dataset_type = 'ceval'
     
-    def convert_to_case(self, item):
-        """将C-Eval数据项转换为标准案例格式"""
+    def preprocess(self, data_item):
+        """将C-Eval数据项转换为标准DataItem格式"""
         # C-Eval的每个数据项包含：问题、选项、答案等
-        question = item.get('question', '')
-        options = item.get('options', [])
-        answer = item.get('answer', '')
-        subject = item.get('subject', '')
+        question = data_item.get('question', '')
+        options = data_item.get('options', [])
+        reference = data_item.get('answer', '')
+        subject = data_item.get('subject', '')
         
         # 构建完整的提示词，包含问题和选项
         options_text = "\n".join([f"{chr(65 + i)}. {option}" for i, option in enumerate(options)])
@@ -20,38 +21,21 @@ class CEvalDataset(CustomDataset):
         # 构建元数据，包含学科和其他信息
         metadata = {
             'subject': subject,
-            'difficulty': item.get('difficulty', ''),
-            'category': item.get('category', '')
+            'difficulty': data_item.get('difficulty', ''),
+            'category': data_item.get('category', '')
         }
         
-        return {
-            'prompt': full_prompt,
-            'answer': answer,
-            'metadata': metadata
-        }
-    
-    def get_dataset_info(self):
-        return {
-            'dataset_type': self.dataset_type,
-            'num_samples': len(self.data),
-            'subjects': self._get_unique_subjects(),
-            'categories': self._get_unique_categories()
-        }
-    
-    def _get_unique_subjects(self):
-        """获取数据集中的唯一学科"""
-        subjects = set()
-        for item in self.data:
-            subject = item.get('subject')
-            if subject:
-                subjects.add(subject)
-        return list(subjects)
-    
-    def _get_unique_categories(self):
-        """获取数据集中的唯一分类"""
-        categories = set()
-        for item in self.data:
-            category = item.get('category')
-            if category:
-                categories.add(category)
-        return list(categories)
+        categories = ['ceval']
+        if subject:
+            categories.append(subject)
+        if metadata.get('category'):
+            categories.append(metadata['category'])
+        
+        return DataItem(
+            id=str(hash(str(data_item))),
+            prompt=full_prompt,
+            reference=reference,
+            metadata=metadata,
+            category=categories,
+            difficulty=metadata.get('difficulty')
+        )

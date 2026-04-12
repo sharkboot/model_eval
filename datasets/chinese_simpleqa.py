@@ -1,6 +1,7 @@
 from .base import BaseDataset
 import os
 from utils.data_reader import read_file
+from utils.data_classes import DataItem
 
 class ChineseSimpleQADataset(BaseDataset):
     def __init__(self, config):
@@ -12,28 +13,27 @@ class ChineseSimpleQADataset(BaseDataset):
         if not os.path.exists(self.data_path):
             raise FileNotFoundError(f"Data file not found: {self.data_path}")
         
-        self.data = read_file(self.data_path)
+        raw_data = read_file(self.data_path)
+        return [self.preprocess(item) for item in raw_data]
     
-    def get_dataset_info(self):
-        return {
-            'dataset_type': 'custom',
-            'data_type': self.data_type,
-            'data_path': self.data_path,
-            'data_size': len(self.data)
-        }
-    
-    def convert_to_case(self, item):
-        """将数据项转换为标准案例格式"""
-        prompt = item.get('question', '')
-        answer = item.get('answer', '')
+    def preprocess(self, data_item):
+        prompt = data_item.get('question', '')
+        reference = data_item.get('answer', '')
         metadata = {
-            'id': item.get('id', ''),
-            'primary_category': item.get('primary_category', ''),
-            'secondary_category': item.get('secondary_category', ''),
-            'urls': item.get('urls', [])
+            'id': data_item.get('id', ''),
+            'primary_category': data_item.get('primary_category', ''),
+            'secondary_category': data_item.get('secondary_category', ''),
+            'urls': data_item.get('urls', [])
         }
-        return {
-            'prompt': prompt,
-            'answer': answer,
-            'metadata': metadata
-        }
+        categories = [self.data_type]
+        if metadata.get('primary_category'):
+            categories.append(metadata['primary_category'])
+        if metadata.get('secondary_category'):
+            categories.append(metadata['secondary_category'])
+        return DataItem(
+            id=data_item.get('id', str(hash(str(data_item)))),
+            prompt=prompt,
+            reference=reference,
+            metadata=metadata,
+            category=categories
+        )

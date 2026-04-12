@@ -1,43 +1,38 @@
 from .base import BaseDataset
 import os
 from utils.data_reader import read_file
+from utils.data_classes import DataItem
 
 class CustomDataset(BaseDataset):
     def __init__(self, config):
         super().__init__(config)
-        self.data_path = config.get('data_path')
+        self.data_path = config.get('data_path', config.get('path'))
         self.data_type = config.get('data_type')
     
     def load(self):
         if not os.path.exists(self.data_path):
             raise FileNotFoundError(f"Data file not found: {self.data_path}")
         
-        self.data = read_file(self.data_path)
+        raw_data = read_file(self.data_path)
+        return [self.preprocess(item) for item in raw_data]
     
-    def get_dataset_info(self):
-        return {
-            'dataset_type': 'custom',
-            'data_type': self.data_type,
-            'data_path': self.data_path,
-            'data_size': len(self.data)
-        }
-    
-    def convert_to_case(self, item):
-        """将数据项转换为标准案例格式"""
-        prompt = item.get('prompt', item.get('question', ''))
-        answer = item.get('answer', '')
+    def preprocess(self, data_item):
+        prompt = data_item.get('prompt', data_item.get('question', ''))
+        reference = data_item.get('answer', '')
         metadata = {
-            key: value for key, value in item.items()
+            key: value for key, value in data_item.items()
             if key not in ['prompt', 'question', 'answer']
         }
         # 处理CSV格式中的options字段，将|分隔的字符串转换为列表
         if 'options' in metadata and isinstance(metadata['options'], str):
             metadata['options'] = metadata['options'].split('|')
-        return {
-            'prompt': prompt,
-            'answer': answer,
-            'metadata': metadata
-        }
+        return DataItem(
+            id=str(hash(str(data_item))),
+            prompt=prompt,
+            reference=reference,
+            metadata=metadata,
+            category=[self.data_type] if self.data_type else []
+        )
 
 class MCQDataset(CustomDataset):
     def __init__(self, config):

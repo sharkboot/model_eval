@@ -1,4 +1,5 @@
 from .base import BaseDataset
+from utils.data_classes import DataItem
 
 class StandardDataset(BaseDataset):
     def __init__(self, config):
@@ -10,32 +11,28 @@ class StandardDataset(BaseDataset):
         # 模拟数据集加载，不依赖modelscope
         print(f"Loading standard dataset: {self.dataset_name} ({self.split})")
         # 生成模拟数据
-        self.data = [
+        raw_data = [
             {'prompt': f'Question {i} from {self.dataset_name}', 'answer': f'Answer {i}'}
             for i in range(5)
         ]
+        return [self.preprocess(item) for item in raw_data]
     
-    def get_dataset_info(self):
-        return {
-            'dataset_type': 'standard',
-            'dataset_name': self.dataset_name,
-            'split': self.split,
-            'data_size': len(self.data)
-        }
-    
-    def convert_to_case(self, item):
-        """将数据项转换为标准案例格式"""
-        prompt = item.get('prompt', item.get('question', ''))
-        answer = item.get('answer', '')
+    def preprocess(self, data_item):
+        prompt = data_item.get('prompt', data_item.get('question', ''))
+        reference = data_item.get('answer', '')
         metadata = {
-            key: value for key, value in item.items()
+            key: value for key, value in data_item.items()
             if key not in ['prompt', 'question', 'answer']
         }
-        return {
-            'prompt': prompt,
-            'answer': answer,
-            'metadata': metadata
-        }
+        metadata['dataset_name'] = self.dataset_name
+        metadata['split'] = self.split
+        return DataItem(
+            id=str(hash(str(data_item))),
+            prompt=prompt,
+            reference=reference,
+            metadata=metadata,
+            category=[self.dataset_name]
+        )
 
 class MMLUDataset(StandardDataset):
     def __init__(self, config):
