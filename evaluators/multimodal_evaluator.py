@@ -1,6 +1,6 @@
 from .base import BaseEvaluator
 import asyncio
-from utils.data_classes import EvaluationResult
+from core.base import EvaluationResult
 
 class MultimodalEvaluator(BaseEvaluator):
     def __init__(self, config):

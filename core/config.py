@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Union, List, Optional, Dict, Any
-from utils.data_filter import DataFilter
+from core.data_filter import DataFilter
 
 @dataclass
 class DatasetConfig:

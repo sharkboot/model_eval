@@ -1,5 +1,5 @@
 from .base import BaseModel
-from utils.data_classes import ModelInput
+from core.base import ModelInput
 
 class LocalModel(BaseModel):
     def __init__(self, config):

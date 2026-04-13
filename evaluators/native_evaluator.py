@@ -1,7 +1,7 @@
 from .base import BaseEvaluator
 import time
 import asyncio
-from utils.data_classes import EvaluationResult
+from core.base import EvaluationResult
 
 class NativeEvaluator(BaseEvaluator):
     def __init__(self, config):

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
-from utils.data_classes import DataItem
+from core.base import DataItem
 
 class BaseDataset(ABC):
     def __init__(self, config):

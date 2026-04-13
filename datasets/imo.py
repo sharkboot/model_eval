@@ -1,5 +1,5 @@
 from .custom import CustomDataset
-from utils.data_classes import DataItem
+from core.base import DataItem
 
 class IMODataset(CustomDataset):
     def __init__(self, config):

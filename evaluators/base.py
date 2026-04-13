@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from utils.data_classes import DataItem, EvaluationResult
+from core.base import DataItem, EvaluationResult
 
 class BaseEvaluator(ABC):
     def __init__(self, config):

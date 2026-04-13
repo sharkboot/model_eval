@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
-from utils.config import RunConfig, DatasetConfig, BenchmarkConfig
-from utils.registry import DatasetRegistry, ModelRegistry, EvaluatorRegistry
-from utils.data_classes import DataItem, ModelInput
+from core.config import RunConfig, DatasetConfig, BenchmarkConfig
+from core.registry import DatasetRegistry, ModelRegistry, EvaluatorRegistry
+from core.base import DataItem, ModelInput
 
 class EvaluationRunner:
     """

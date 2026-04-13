@@ -8,13 +8,13 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from models import OpenAIModel, LocalModel, GenericAPIModel
 from datasets import StandardDataset, CustomDataset, ChineseSimpleQADataset, WritingBenchDataset, CEvalDataset, AIMEDataset, HMMTDataset, AMODataset, IMODataset, SuperGPQADataset, EQBenchDataset
-from backends import NativeEvaluator, ChineseSimpleQAEvaluator, AgentEvaluator, MultimodalEvaluator, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator, AMOEvaluator, IMOMEvaluator, SuperGPQAEvaluator, EQBenchEvaluator
+from evaluators import NativeEvaluator, ChineseSimpleQAEvaluator, AgentEvaluator, MultimodalEvaluator, WritingBenchEvaluator, CEvalEvaluator, AIMEEvaluator, HMMTEvaluator, AMOEvaluator, IMOMEvaluator, SuperGPQAEvaluator, EQBenchEvaluator, ThirdPartyEvaluator
 from performance import ConcurrencyTest
 
 # Import new architecture components
-from utils.registry import DatasetRegistry, ModelRegistry, EvaluatorRegistry
-from utils.config import RunConfig, DatasetConfig, BenchmarkConfig
-from utils.runner import EvaluationRunner
+from core.registry import DatasetRegistry, ModelRegistry, EvaluatorRegistry
+from core.config import RunConfig, DatasetConfig, BenchmarkConfig
+from core.engine import EvaluationRunner
 
 def load_config(config_path):
     with open(config_path, 'r', encoding='utf-8') as f:

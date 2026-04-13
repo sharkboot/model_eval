@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from utils.data_classes import ModelInput
+from core.base import ModelInput
 
 class BaseModel(ABC):
     def __init__(self, config):

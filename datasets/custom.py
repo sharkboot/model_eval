@@ -1,7 +1,7 @@
 from .base import BaseDataset
 import os
-from utils.data_reader import read_file
-from utils.data_classes import DataItem
+from core.data_reader import read_file
+from core.base import DataItem
 
 class CustomDataset(BaseDataset):
     def __init__(self, config):

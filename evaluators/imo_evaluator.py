@@ -1,5 +1,5 @@
 from .base import BaseEvaluator
-from utils.data_classes import EvaluationResult
+from core.base import EvaluationResult
 
 class IMOMEvaluator(BaseEvaluator):
     def __init__(self, config):

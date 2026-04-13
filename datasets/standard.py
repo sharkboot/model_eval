@@ -1,5 +1,5 @@
 from .base import BaseDataset
-from utils.data_classes import DataItem
+from core.base import DataItem
 
 class StandardDataset(BaseDataset):
     def __init__(self, config):
