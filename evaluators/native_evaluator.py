@@ -2,7 +2,9 @@ from .base import BaseEvaluator
 import time
 import asyncio
 from core.base import EvaluationResult
+from .registry import EvaluatorRegistry
 
+@EvaluatorRegistry.register('NativeEvaluator')
 class NativeEvaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)

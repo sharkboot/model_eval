@@ -1,6 +1,8 @@
 from typing import List, Dict, Any
 from core.config import RunConfig, DatasetConfig, BenchmarkConfig
-from core.registry import DatasetRegistry, ModelRegistry, EvaluatorRegistry
+from datasets.registry import DatasetRegistry
+from models.registry import ModelRegistry
+from evaluators.registry import EvaluatorRegistry
 from core.base import DataItem, ModelInput
 
 class EvaluationRunner:

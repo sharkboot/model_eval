@@ -2,7 +2,9 @@ from .base import BaseDataset
 import os
 from core.data_reader import read_file
 from core.base import DataItem
+from .registry import DatasetRegistry
 
+@DatasetRegistry.register('ChineseSimpleQADataset')
 class ChineseSimpleQADataset(BaseDataset):
     def __init__(self, config):
         super().__init__(config)

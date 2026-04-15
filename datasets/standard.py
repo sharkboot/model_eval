@@ -1,6 +1,8 @@
 from .base import BaseDataset
 from core.base import DataItem
+from .registry import DatasetRegistry
 
+@DatasetRegistry.register('StandardDataset')
 class StandardDataset(BaseDataset):
     def __init__(self, config):
         super().__init__(config)
@@ -34,21 +36,25 @@ class StandardDataset(BaseDataset):
             category=[self.dataset_name]
         )
 
+@DatasetRegistry.register('MMLUDataset')
 class MMLUDataset(StandardDataset):
     def __init__(self, config):
         config['dataset_name'] = config.get('dataset_name', 'mmlu')
         super().__init__(config)
 
+@DatasetRegistry.register('GSM8KDataset')
 class GSM8KDataset(StandardDataset):
     def __init__(self, config):
         config['dataset_name'] = config.get('dataset_name', 'gsm8k')
         super().__init__(config)
 
+@DatasetRegistry.register('CEvalDataset')
 class CEvalDataset(StandardDataset):
     def __init__(self, config):
         config['dataset_name'] = config.get('dataset_name', 'c-eval')
         super().__init__(config)
 
+@DatasetRegistry.register('HumanEvalDataset')
 class HumanEvalDataset(StandardDataset):
     def __init__(self, config):
         config['dataset_name'] = config.get('dataset_name', 'humaneval')

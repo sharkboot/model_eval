@@ -2,7 +2,9 @@ from openai import OpenAI
 import json
 from .base import BaseModel
 from core.base import ModelInput
+from .registry import ModelRegistry
 
+@ModelRegistry.register('APIModel')
 class APIModel(BaseModel):
     def __init__(self, config):
         super().__init__(config)
@@ -43,6 +45,7 @@ class APIModel(BaseModel):
             'base_url': self.base_url
         }
 
+@ModelRegistry.register('OpenAIModel')
 class OpenAIModel(APIModel):
     def __init__(self, config):
         super().__init__(config)
@@ -128,6 +131,7 @@ class OpenAIModel(APIModel):
             print(f"API call failed: {e}")
             return "我不知道。"
 
+@ModelRegistry.register('ClaudeModel')
 class ClaudeModel(APIModel):
     def __init__(self, config):
         super().__init__(config)
@@ -144,6 +148,7 @@ class ClaudeModel(APIModel):
         # Claude的异步实现
         return "Claude async response: " + prompt
 
+@ModelRegistry.register('GenericAPIModel')
 class GenericAPIModel(APIModel):
     def __init__(self, config):
         super().__init__(config)

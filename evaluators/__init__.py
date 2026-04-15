@@ -12,6 +12,7 @@ from .imo_evaluator import IMOMEvaluator
 from .supergpqa_evaluator import SuperGPQAEvaluator
 from .eq_bench_evaluator import EQBenchEvaluator
 from .third_party_evaluator import ThirdPartyEvaluator
+from .registry import EvaluatorRegistry
 
 __all__ = [
     'BaseEvaluator',
@@ -27,5 +28,6 @@ __all__ = [
     'IMOMEvaluator',
     'SuperGPQAEvaluator',
     'EQBenchEvaluator',
-    'ThirdPartyEvaluator'
+    'ThirdPartyEvaluator',
+    'EvaluatorRegistry'
 ]

@@ -10,6 +10,7 @@ from .amo import AMODataset
 from .imo import IMODataset
 from .supergpqa import SuperGPQADataset
 from .eq_bench import EQBenchDataset
+from .registry import DatasetRegistry
 
 __all__ = [
     'BaseDataset',
@@ -23,5 +24,6 @@ __all__ = [
     'AMODataset',
     'IMODataset',
     'SuperGPQADataset',
-    'EQBenchDataset'
+    'EQBenchDataset',
+    'DatasetRegistry'
 ]

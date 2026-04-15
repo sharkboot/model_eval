@@ -1,6 +1,8 @@
 from .base import BaseModel
 from core.base import ModelInput
+from .registry import ModelRegistry
 
+@ModelRegistry.register('LocalModel')
 class LocalModel(BaseModel):
     def __init__(self, config):
         super().__init__(config)

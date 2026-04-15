@@ -12,7 +12,9 @@ from evaluators import NativeEvaluator, ChineseSimpleQAEvaluator, AgentEvaluator
 from performance import ConcurrencyTest
 
 # Import new architecture components
-from core.registry import DatasetRegistry, ModelRegistry, EvaluatorRegistry
+from datasets.registry import DatasetRegistry
+from models.registry import ModelRegistry
+from evaluators.registry import EvaluatorRegistry
 from core.config import RunConfig, DatasetConfig, BenchmarkConfig
 from core.engine import EvaluationRunner
 
