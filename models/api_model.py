@@ -61,6 +61,11 @@ class OpenAIModel(APIModel):
                 messages = []
                 if input_item.system_prompt:
                     messages.append({'role': 'system', 'content': input_item.system_prompt})
+                
+                # 如果有对话历史，使用对话历史
+                if input_item.messages:
+                    messages.extend(input_item.messages)
+                # 添加当前提示作为最新的用户消息
                 messages.append({'role': 'user', 'content': input_item.prompt})
                 
                 completion = self.client.chat.completions.create(
@@ -140,8 +145,13 @@ class ClaudeModel(APIModel):
     def generate(self, inputs):
         results = []
         for input_item in inputs:
-            # Claude的实现
-            results.append("Claude response: " + input_item.prompt)
+            # Claude的实现，支持多轮对话
+            if input_item.messages:
+                # 如果有对话历史，构建完整的对话上下文
+                conversation = "\n".join([f"{msg['role']}: {msg['content']}" for msg in input_item.messages])
+                results.append(f"Claude response to conversation: {conversation}\nUser: {input_item.prompt}")
+            else:
+                results.append("Claude response: " + input_item.prompt)
         return results
     
     async def async_generate(self, prompt):
@@ -157,8 +167,13 @@ class GenericAPIModel(APIModel):
     def generate(self, inputs):
         results = []
         for input_item in inputs:
-            # 通用API的实现
-            results.append("Generic API response: " + input_item.prompt)
+            # 通用API的实现，支持多轮对话
+            if input_item.messages:
+                # 如果有对话历史，构建完整的对话上下文
+                conversation = "\n".join([f"{msg['role']}: {msg['content']}" for msg in input_item.messages])
+                results.append(f"Generic API response to conversation: {conversation}\nUser: {input_item.prompt}")
+            else:
+                results.append("Generic API response: " + input_item.prompt)
         return results
     
     async def async_generate(self, prompt):

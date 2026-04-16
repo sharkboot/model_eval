@@ -16,6 +16,7 @@ class ModelInput:
     prompt: str
     system_prompt: Optional[str] = None
     generation_config: Dict[str, Any] = field(default_factory=dict)
+    messages: Optional[List[Dict[str, str]]] = None  # 多轮对话历史，格式: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
 
 @dataclass
 class EvaluationResult:

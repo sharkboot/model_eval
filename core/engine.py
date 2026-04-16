@@ -45,16 +45,35 @@ class EvaluationRunner:
         data_items = self._prepare_dataset(ds_config)
         if not data_items: return {"score": 0, "report": "No data"}
 
-        # 暂时跳过引擎设置和运行步骤，直接返回模拟结果
-        # engine, collector = self._setup_engine(data_items, ds_config.name)
-        # for _ in range(self.config.rounds): engine.run()
-        # 
-        # results = collector.get_all_results()
-        # analyzer = DatasetAnalyzer(dataset=None, results=results)
-        # report = analyzer.generate_report()
+        # 实际执行评估逻辑
+        results = []
         
-        # 模拟报告
-        report = {"accuracy": 0.8, "total_items": len(data_items)}
+        # 创建模型实例
+        model_config = self.config.model_config
+        model = ModelRegistry.get(model_config.get('name', 'LocalModel'))(model_config)
+        
+        # 创建评估器实例
+        evaluator_config = self.config.evaluator_configs[0]
+        evaluator = EvaluatorRegistry.get(evaluator_config.get('name', 'NativeEvaluator'))(evaluator_config)
+        
+        # 执行评估
+        for data_item in data_items:
+            # 构建模型输入，支持多轮对话
+            model_input = ModelInput(
+                prompt=data_item.prompt,
+                system_prompt="You are a helpful assistant.",
+                generation_config={},
+                messages=data_item.metadata.get('dialogue_history')  # 传递对话历史
+            )
+            # 生成模型输出
+            model_output = model.generate([model_input])[0]
+            # 评估结果
+            result = evaluator.evaluate(data_item, model_output)
+            results.append(result)
+        
+        # 生成报告
+        analyzer = DatasetAnalyzer(dataset=None, results=results)
+        report = analyzer.generate_report()
         
         return {
             "name": ds_config.name,
@@ -123,5 +142,16 @@ class DatasetAnalyzer:
     
     def generate_report(self):
         # 生成报告的逻辑
-        # 这里需要根据实际情况实现
-        return {"accuracy": 0.0}
+        if not self.results:
+            return {"accuracy": 0.0, "total_items": 0}
+        
+        # 计算准确率
+        total = len(self.results)
+        correct = sum(1 for result in self.results if result.metrics.get('accuracy', 0) >= 0.5)
+        accuracy = correct / total if total > 0 else 0.0
+        
+        return {
+            "accuracy": accuracy,
+            "total_items": total,
+            "correct_items": correct
+        }
