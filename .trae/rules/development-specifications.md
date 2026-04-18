@@ -316,7 +316,7 @@ class EvaluationRunner:
             elif isinstance(task, DatasetConfig):
                 result = self._run_single_dataset(task)
             else:
-                raise ValueError("Invalid task type in RunConfig")
+                raise ValueError("Invalid tasks type in RunConfig")
                 
             all_results.append(result)
             

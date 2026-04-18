@@ -1,157 +1,36 @@
-from typing import List, Dict, Any
-from core.config import RunConfig, DatasetConfig, BenchmarkConfig
-from datasets.registry import DatasetRegistry
-from models.registry import ModelRegistry
-from evaluators.registry import EvaluatorRegistry
-from core.base import DataItem, ModelInput
+# core/engine.py
+from core.auto_import import auto_import
+from tasks.multitask_runner import MultiTaskRunner
+from core.leaderboard import Leaderboard
 
-class EvaluationRunner:
-    """
-    评测运行类：支持混合任务调度
-    """
-    
-    def __init__(self, config: RunConfig):
+
+class EvaluationEngine:
+
+    def __init__(self, config):
         self.config = config
-        
-    def _prepare_dataset(self, ds_config: DatasetConfig) -> List[DataItem]:
-        """
-        加载单个数据集，并应用 limit 和 filter
-        """
-        # 从配置中获取数据集配置
-        dataset_config = {}
-        # 这里简化处理，直接使用默认配置
-        if ds_config.name == 'chinese_simpleqa':
-            dataset_config = {'data_path': 'data/chinese_simpleqa.json'}
-        elif ds_config.name == 'writing_bench':
-            dataset_config = {'data_path': 'data/writing_bench.json'}
-        elif ds_config.name == 'ceval':
-            dataset_config = {'data_path': 'data/ceval.json'}
-        # 添加其他数据集的默认配置
-        
-        dataset = DatasetRegistry.get(ds_config.name)(dataset_config)
-        raw_data = dataset.load()
-        
-        if ds_config.filter:
-            raw_data = ds_config.filter.apply(raw_data)
-        if ds_config.limit is not None:
-            raw_data = raw_data[:ds_config.limit]
-            
-        return raw_data
 
-    def _run_single_dataset(self, ds_config: DatasetConfig) -> Dict[str, Any]:
-        """
-        执行单个数据集的评测
-        """
-        data_items = self._prepare_dataset(ds_config)
-        if not data_items: return {"score": 0, "report": "No data"}
+        auto_import("datasets")
+        auto_import("models")
+        auto_import("evaluators")
+        auto_import("tasks")
+    def run(self):
 
-        # 实际执行评估逻辑
-        results = []
-        
-        # 创建模型实例
-        model_config = self.config.model_config
-        model = ModelRegistry.get(model_config.get('name', 'LocalModel'))(model_config)
-        
-        # 创建评估器实例
-        evaluator_config = self.config.evaluator_configs[0]
-        evaluator = EvaluatorRegistry.get(evaluator_config.get('name', 'NativeEvaluator'))(evaluator_config)
-        
-        # 执行评估
-        for data_item in data_items:
-            # 构建模型输入，支持多轮对话
-            model_input = ModelInput(
-                prompt=data_item.prompt,
-                system_prompt="You are a helpful assistant.",
-                generation_config={},
-                messages=data_item.metadata.get('dialogue_history')  # 传递对话历史
-            )
-            # 生成模型输出
-            model_output = model.generate([model_input])[0]
-            # 评估结果
-            result = evaluator.evaluate(data_item, model_output)
-            results.append(result)
-        
-        # 生成报告
-        analyzer = DatasetAnalyzer(dataset=None, results=results)
-        report = analyzer.generate_report()
-        
-        return {
-            "name": ds_config.name,
-            "type": "dataset",
-            "score": report.get("accuracy", 0.0), 
-            "report": report
-        }
+        # 判断是否多任务
+        if "tasks" in self.config:
+            runner = MultiTaskRunner(self.config)
+            results = runner.run()
+        else:
+            # 单任务兼容
+            from tasks.standard_runner import StandardTaskRunner
+            runner = StandardTaskRunner(self.config)
+            results = {"single_task": runner.run()}
 
-    def _run_single_benchmark(self, bench_config: BenchmarkConfig) -> Dict[str, Any]:
-        """
-        执行单个 Benchmark 的评测与分数聚合
-        """
-        print(f"\n 开始评测基准: {bench_config.name}")
-        benchmark_details = {}
-        total_weighted_score = 0.0
-        total_weight = 0.0
-        
-        for ds_config in bench_config.datasets:
-            result = self._run_single_dataset(ds_config)
-            benchmark_details[ds_config.name] = result
-            
-            score = result["score"]
-            weighted_score = score * ds_config.weight
-            total_weighted_score += weighted_score
-            total_weight += ds_config.weight
-            
-        final_score = total_weighted_score / total_weight if total_weight > 0 else 0.0
-        
-        return {
-            "name": bench_config.name,
-            "type": "benchmark",
-            "final_score": final_score,
-            "details": benchmark_details
-        }
+        # 汇总 leaderboard
+        leaderboard = Leaderboard()
 
-    def run(self) -> Dict[str, Any]:
-        """
-        执行所有任务
-        """
-        all_results = []
-        
-        for task in self.config.tasks:
-            if isinstance(task, BenchmarkConfig):
-                result = self._run_single_benchmark(task)
-            elif isinstance(task, DatasetConfig):
-                result = self._run_single_dataset(task)
-            else:
-                raise ValueError("Invalid task type in RunConfig")
-                
-            all_results.append(result)
-            
-        return {
-            "summary": {r["name"]: r.get("final_score", r["score"]) for r in all_results},
-            "details": all_results
-        }
-        
-    def _setup_engine(self, data_items, dataset_name):
-        # 构建 EvaluationEngine 的标准逻辑
-        # 这里需要根据实际情况实现
-        pass
+        for task_name, metrics in results.items():
+            leaderboard.add(task_name, metrics)
 
-class DatasetAnalyzer:
-    def __init__(self, dataset, results):
-        self.dataset = dataset
-        self.results = results
-    
-    def generate_report(self):
-        # 生成报告的逻辑
-        if not self.results:
-            return {"accuracy": 0.0, "total_items": 0}
-        
-        # 计算准确率
-        total = len(self.results)
-        correct = sum(1 for result in self.results if result.metrics.get('accuracy', 0) >= 0.5)
-        accuracy = correct / total if total > 0 else 0.0
-        
-        return {
-            "accuracy": accuracy,
-            "total_items": total,
-            "correct_items": correct
-        }
+        leaderboard.pretty_print()
+
+        return leaderboard.summary()

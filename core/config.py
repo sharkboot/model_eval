@@ -22,3 +22,10 @@ class RunConfig:
     rounds: int = 1
     model_config: Dict[str, Any] = field(default_factory=dict)
     extra_args: Dict[str, Any] = field(default_factory=dict)
+
+
+import yaml
+
+def load_config(path: str):
+    with open(path, 'r') as f:
+        return yaml.safe_load(f)

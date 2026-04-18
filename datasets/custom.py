@@ -1,10 +1,10 @@
+from core.registry import Registry
 from .base import BaseDataset
 import os
 from core.data_reader import read_file
 from core.base import DataItem
-from .registry import DatasetRegistry
 
-@DatasetRegistry.register('CustomDataset')
+@Registry.register("CustomDataset", "dataset")
 class CustomDataset(BaseDataset):
     def __init__(self, config):
         super().__init__(config)
@@ -36,26 +36,10 @@ class CustomDataset(BaseDataset):
             category=[self.data_type] if self.data_type else []
         )
 
-@DatasetRegistry.register('MCQDataset')
-class MCQDataset(CustomDataset):
-    def __init__(self, config):
-        config['data_type'] = 'mcq'
-        super().__init__(config)
-
-@DatasetRegistry.register('QADataset')
-class QADataset(CustomDataset):
-    def __init__(self, config):
-        config['data_type'] = 'qa'
-        super().__init__(config)
-
-@DatasetRegistry.register('FunctionCallDataset')
-class FunctionCallDataset(CustomDataset):
-    def __init__(self, config):
-        config['data_type'] = 'function_call'
-        super().__init__(config)
-
-@DatasetRegistry.register('VQADataset')
-class VQADataset(CustomDataset):
-    def __init__(self, config):
-        config['data_type'] = 'vqa'
-        super().__init__(config)
+@Registry.register("dummy", "dataset")
+class DummyDataset(BaseDataset):
+    def load(self):
+        return [
+            DataItem(id="1", prompt="2+2=?", reference="4"),
+            DataItem(id="2", prompt="3+5=?", reference="8"),
+        ]

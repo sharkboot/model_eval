@@ -25,3 +25,8 @@ class EvaluationResult:
     raw_output: Any
     metrics: Dict[str, Any]
     details: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ModelOutput:
+    text: str
