@@ -2,256 +2,368 @@
 
 ## 项目简介
 
-本项目是一个参考EvalScope实现的模型评测框架，支持大语言模型（LLM）、多模态模型（VLM）、嵌入模型（Embedding）、重排模型（Reranker）和生成模型（AIGC）的评测。框架提供了多后端评估、性能监控（压测）和工具扩展等核心功能，支持多种输出格式和可视化平台。
+本项目是一个轻量级的大语言模型评测框架，支持自定义数据集、模型适配器、评估器和提示词构建器的灵活扩展。框架采用注册中心模式实现模块解耦，支持并发评测和断点续跑。
 
 ## 项目结构
 
 ```
 model_eval/
-├── models/            # 模型模块，包括API模型和本地模型
-├── datasets/          # 数据集模块，包括标准评测基准和自定义数据集
-├── backends/          # 后端评估模块，包括原生后端和第三方框架集成
-├── performance/       # 性能监控模块，支持并发测试和指标追踪
-├── tools/             # 工具扩展模块，集成Tool-Bench、Needle-in-a-Haystack等工具
-├── reports/           # 报告生成模块，支持JSON、表格和日志等格式
-├── visualization/     # 可视化平台模块，支持Gradio、Wandb、SwanLab、ClearML等
-├── configs/           # 配置文件目录
-├── examples/          # 使用示例目录
-├── utils/             # 工具函数目录
-└── README.md          # 项目说明文件
+├── cli/                  # 命令行入口
+│   ├── main.py           # CLI 主入口
+│   └── local_main.py     # 本地评测入口
+├── core/                 # 核心模块
+│   ├── auto_import.py    # 自动导入
+│   ├── base.py           # 数据类定义
+│   ├── config.py         # 配置类
+│   ├── data_filter.py    # 数据过滤器
+│   ├── data_reader.py    # 数据读取器
+│   ├── engine.py         # 评测引擎
+│   ├── leaderboard.py    # 排行榜
+│   └── registry.py       # 注册中心
+├── datasets/             # 数据集模块
+│   ├── base.py           # 数据集基类
+│   └── *.py              # 具体数据集实现
+├── evaluators/           # 评估器模块
+│   ├── base.py           # 评估器基类
+│   └── *.py              # 具体评估器实现
+├── models/               # 模型模块
+│   ├── base.py           # 模型基类
+│   └── *.py              # 具体模型适配器
+├── prompt_builder/        # 提示词构建器
+│   ├── base.py           # 提示词构建器基类
+│   └── *.py              # 具体提示词构建器
+├── reports/              # 报告模块
+│   ├── base.py           # 报告基类
+│   └── formats.py        # 报告格式
+├── tasks/                # 任务运行器
+│   ├── task_runner.py    # 任务运行器基类
+│   ├── standard_runner.py # 标准任务运行器
+│   └── multitask_runner.py # 多任务运行器
+├── tools/                # 工具模块
+│   ├── base.py           # 工具基类
+│   └── extensions.py     # 工具扩展
+├── visualization/         # 可视化模块
+│   ├── base.py           # 可视化基类
+│   └── platforms.py      # 可视化平台
+├── configs/              # 配置文件目录
+├── docs/                 # 文档目录
+├── results/              # 结果保存目录
+└── tests/                # 测试目录
 ```
 
 ## 安装说明
 
 ### 基本依赖
 
-本框架不依赖任何外部库，使用纯Python实现。
+```bash
+pip install openai pyyaml
+```
 
 ### 可选依赖
 
-根据需要安装以下依赖：
+```bash
+# 数据可视化
+pip install matplotlib seaborn
 
-- **可视化平台**：
-  ```bash
-  pip install gradio
-  ```
+# 其他工具
+pip install pandas openpyxl
+```
 
-## 使用方法
+## 快速开始
 
 ### 1. 配置文件
 
-创建配置文件（参考 `configs/example_config.json`），指定模型、数据集、后端、性能测试和报告等配置。
+创建评测配置文件（参考 `configs/test.yaml`）：
+
+```yaml
+# 数据集配置
+dataset:
+  name: ChineseSimpleQA
+  params:
+    path: "data/chinese_simpleqa.json"
+
+# 模型配置
+model:
+  name: MiniMax
+  params:
+    generation_config:
+      temperature: 0.7
+      max_tokens: 1024
+
+# 评估器配置
+evaluators:
+  - name: accuracy
+
+# 提示词构建器配置
+prompt_builder:
+  name: qa_builder
+  params: {}
+
+# 并发配置
+num_workers: 4
+
+# 输出配置
+output_path: results
+run_name: my_eval
+```
 
 ### 2. 运行评测
 
-使用评测框架执行脚本运行评测，默认使用 `configs/example_config.json` 配置文件：
-
 ```bash
-python run_eval.py
-```
+# 使用CLI运行
+python -m cli.main --config configs/test.yaml
 
-使用指定的配置文件运行评测：
-
-```bash
-python run_eval.py --config configs/test_config.json
+# 或直接运行
+python cli/main.py --config configs/test.yaml
 ```
 
 ### 3. 查看结果
 
-评测结果将保存在 `results/` 目录中，包括：
-- `eval_results.json`：评测结果
-- `performance_metrics.json`：性能测试指标
+评测结果保存在 `results/{run_name}/` 目录中：
 
-## 示例
-
-### 评估OpenAI模型
-
-```python
-from models import OpenAIModel
-from datasets import MMLUDataset
-from backends import NativeBackend
-from reports import JSONReport
-
-# 初始化模型
-model = OpenAIModel({
-    "api_key": "YOUR_API_KEY",
-    "model_name": "gpt-3.5-turbo",
-    "base_url": "https://api.openai.com/v1"
-})
-
-# 初始化数据集
-dataset = MMLUDataset({"split": "test"})
-
-# 初始化后端
-backend = NativeBackend({"task_type": "llm"})
-
-# 运行评测
-results = backend.evaluate(model, dataset)
-
-# 生成报告
-report = JSONReport({})
-for result in results:
-    report.add_result(result)
-report.save("results/eval_results.json")
+```
+results/my_eval/
+├── config.json      # 评测配置
+├── results.jsonl    # 逐条评测结果
+└── summary.json     # 汇总指标
 ```
 
-### 性能测试
+## 核心概念
+
+### 数据类
+
+框架定义了三个核心数据类：
+
+| 类名 | 说明 |
+|------|------|
+| `DataItem` | 标准数据单元，包含 id、prompt、reference、metadata 等字段 |
+| `ModelInput` | 模型输入，支持 text 和 chat 两种模式 |
+| `ModelOutput` | 模型输出，包含生成文本和使用统计 |
+
+### 注册中心
+
+采用分组注册机制，支持四种模块类型：
+
+| group | 说明 | 装饰器 |
+|-------|------|--------|
+| dataset | 数据集 | `@Registry.register("name", "dataset")` |
+| model | 模型 | `@Registry.register("name", "model")` |
+| evaluator | 评估器 | `@Registry.register("name", "evaluator")` |
+| prompt_builder | 提示词构建器 | `@Registry.register("name", "prompt_builder")` |
+
+## 扩展指南
+
+### 添加新数据集
 
 ```python
-from performance import ConcurrencyTest
+from datasets.base import BaseDataset
+from core.base import DataItem
+from core.registry import Registry
 
-# 初始化性能测试
-perf_test = ConcurrencyTest({
-    "concurrency": 5,
-    "requests": 100
-})
+@Registry.register("MyDataset", "dataset")
+class MyDataset(BaseDataset):
+    def load_raw_data(self) -> List[Dict]:
+        # 实现数据加载逻辑
+        return []
 
-# 设置模型和数据集
-perf_test.setup(model, dataset)
-
-# 运行性能测试
-metrics = perf_test.run()
-print(metrics)
+    def preprocess(self, data_item: Dict) -> DataItem:
+        return DataItem(
+            id=self.build_id(data_item.get("id")),
+            prompt=data_item["question"],
+            reference=data_item["answer"],
+            metadata=data_item.get("metadata", {})
+        )
 ```
 
-### 可视化结果
+### 添加新模型
 
 ```python
-from visualization import WandbVisualizer
+from models.base import BaseModel
+from core.base import ModelInput, ModelOutput
+from core.registry import Registry
 
-# 初始化可视化工具
-viz = WandbVisualizer({
-    "project": "model_eval",
-    "name": "eval_run"
-})
+@Registry.register("MyModel", "model")
+class MyModel(BaseModel):
+    def generate(self, model_input: ModelInput) -> ModelOutput:
+        # 调用模型 API
+        response = your_model_api(model_input.prompt)
+        return ModelOutput(
+            type="text",
+            text=response.text,
+            usage={"tokens": response.usage.total_tokens}
+        )
+```
 
-# 可视化结果
-viz.visualize(metrics)
-viz.save()
+### 添加新评估器
+
+```python
+from evaluators.base import BaseEvaluator
+from core.base import DataItem
+from core.registry import Registry
+
+@Registry.register("my_accuracy", "evaluator")
+class MyAccuracyEvaluator(BaseEvaluator):
+    def evaluate(self, pred: str, data_item: DataItem):
+        correct = pred.strip().lower() == str(data_item.reference).strip().lower()
+        return {"accuracy": 1.0 if correct else 0.0}
+```
+
+### 添加新提示词构建器
+
+```python
+from prompt_builder.base import BasePromptBuilder
+from core.base import ModelInput
+from core.registry import Registry
+
+@Registry.register("my_builder", "prompt_builder")
+class MyPromptBuilder(BasePromptBuilder):
+    def build(self, item):
+        return ModelInput(
+            type="text",
+            prompt=f"请根据以下问题回答：{item.prompt}\n\n请用JSON格式输出答案。"
+        )
+```
+
+## 评测流程
+
+```
+配置文件 (YAML)
+    ↓
+EvaluationEngine
+    ↓
+自动导入模块 → Registry 注册
+    ↓
+创建 StandardTaskRunner
+    ↓
+┌─────────────────────────────────────┐
+│  循环处理每个数据项                    │
+│                                      │
+│  DataItem → PromptBuilder → ModelInput │
+│       ↓                              │
+│  Model.generate() → ModelOutput      │
+│       ↓                              │
+│  Evaluator.evaluate() → Metrics      │
+│       ↓                              │
+│  写入 results.jsonl                  │
+└─────────────────────────────────────┘
+    ↓
+汇总指标 → summary.json
 ```
 
 ## 配置说明
 
-配置文件采用JSON格式，包含以下部分：
+### 数据集配置
+
+```yaml
+dataset:
+  name: ChineseSimpleQA
+  params:
+    path: "data/dataset.json"  # 数据路径
+    limits: 100                # 限制数据量（可选）
+```
 
 ### 模型配置
 
-```json
-"model": {
-  "type": "api",
-  "name": "OpenAIModel",
-  "config": {
-    "api_key": "YOUR_API_KEY",
-    "model_name": "gpt-3.5-turbo",
-    "base_url": "https://api.openai.com/v1"
-  }
-}
+```yaml
+model:
+  name: MiniMax
+  params:
+    generation_config:         # 生成配置
+      temperature: 0.7
+      max_tokens: 1024
+      top_p: 0.9
 ```
 
-### 数据集配置
+### 评估器配置
 
-#### 标准数据集
-
-```json
-"dataset": {
-  "type": "standard",
-  "name": "MMLUDataset",
-  "config": {
-    "split": "test"
-  }
-}
+```yaml
+evaluators:
+  - name: accuracy              # 精确匹配
+  - name: rouge                 # ROUGE 评分（需实现）
 ```
 
-#### 自定义数据集
+### 提示词构建器配置
 
-支持多种文件格式：JSON、JSONL、CSV、XLSX、Parquet
-
-```json
-"dataset": {
-  "type": "custom",
-  "name": "MCQDataset",
-  "config": {
-    "data_path": "data/mcq_sample.json",
-    "split": "test"
-  }
-}
+```yaml
+prompt_builder:
+  name: qa_builder
+  params:
+    system_prompt: "你是一个有帮助的AI助手。"  # 可选
 ```
 
-### 后端配置
+### 并发配置
 
-```json
-"backend": {
-  "type": "native",
-  "name": "NativeBackend",
-  "config": {
-    "task_type": "llm"
-  }
-}
+```yaml
+num_workers: 4    # 并发线程数，默认1
 ```
 
-### 性能测试配置
+### 输出配置
 
-```json
-"performance": {
-  "type": "concurrency",
-  "name": "ConcurrencyTest",
-  "config": {
-    "concurrency": 5,
-    "requests": 100
-  }
-}
+```yaml
+output_path: results     # 输出目录
+run_name: my_experiment  # 运行名称（可选，自动生成时间戳）
 ```
 
-### 报告配置
+## 示例
 
-```json
-"report": {
-  "type": "json",
-  "name": "JSONReport",
-  "config": {
-    "output_path": "results/eval_results.json"
-  }
+### 基本评测
+
+```python
+from core.engine import EvaluationEngine
+
+config = {
+    "dataset": {
+        "name": "ChineseSimpleQA",
+        "params": {"path": "data/test.json"}
+    },
+    "model": {
+        "name": "MiniMax",
+        "params": {"generation_config": {"temperature": 0.7}}
+    },
+    "evaluators": [
+        {"name": "accuracy"}
+    ],
+    "prompt_builder": {
+        "name": "qa_builder",
+        "params": {}
+    },
+    "num_workers": 4
 }
+
+engine = EvaluationEngine(config)
+results = engine.run()
 ```
 
-### 可视化配置
+### 自定义评测流程
 
-```json
-"visualization": {
-  "type": "wandb",
-  "name": "WandbVisualizer",
-  "config": {
-    "project": "model_eval",
-    "name": "eval_run"
-  }
-}
+```python
+from core.registry import Registry
+from datasets.base import BaseDataset
+from models.base import BaseModel
+from evaluators.base import BaseEvaluator
+
+# 注册组件
+@Registry.register("my_dataset", "dataset")
+class MyDataset(BaseDataset): ...
+
+@Registry.register("my_model", "model")
+class MyModel(BaseModel): ...
+
+@Registry.register("my_evaluator", "evaluator")
+class MyEvaluator(BaseEvaluator): ...
+
+# 使用
+dataset = Registry.create("my_dataset", "dataset", path="data.json")
+model = Registry.create("my_model", "model", api_key="xxx")
+evaluator = Registry.create("my_evaluator", "evaluator", threshold=0.5)
+
+# 运行评测
+data = dataset.load()
+for item in data:
+    model_input = ...
+    output = model.generate(model_input)
+    result = evaluator.evaluate(output.get_text(), item)
 ```
-
-## 扩展指南
-
-### 添加新模型
-
-1. 在 `models/` 目录下创建新的模型类，继承自 `BaseModel`
-2. 实现 `generate` 和 `get_model_info` 方法
-3. 在 `models/__init__.py` 中导出新模型类
-
-### 添加新数据集
-
-1. 在 `datasets/` 目录下创建新的数据集类，继承自 `BaseDataset`
-2. 实现 `load` 和 `get_dataset_info` 方法
-3. 在 `datasets/__init__.py` 中导出新数据集类
-
-### 添加新后端
-
-1. 在 `backends/` 目录下创建新的后端类，继承自 `BaseBackend`
-2. 实现 `evaluate` 和 `get_backend_info` 方法
-3. 在 `backends/__init__.py` 中导出新后端类
-
-### 添加新工具
-
-1. 在 `tools/` 目录下创建新的工具类，继承自 `BaseTool`
-2. 实现 `setup`、`run` 和 `get_results` 方法
-3. 在 `tools/__init__.py` 中导出新工具类
 
 ## 许可证
 

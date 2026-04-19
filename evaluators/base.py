@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 from core.base import DataItem, EvaluationResult
-from dataclasses import dataclass
-from typing import List
 from core.registry import Registry
 
 

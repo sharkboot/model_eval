@@ -1,0 +1,18 @@
+tasks:
+  - name: standard
+    type: standard
+    dataset:
+      name: ChineseSimpleQA
+      params:
+        data_path: E:/eval/Chinese-SimpleQA/chinese_simpleqa.jsonl
+        limits: 1
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.5
+    evaluators:
+      - name: accuracy
+    output_path: E:/LLM/model_eval/results

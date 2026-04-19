@@ -13,6 +13,8 @@ class EvaluationEngine:
         auto_import("models")
         auto_import("evaluators")
         auto_import("tasks")
+        auto_import("prompt_builder")
+
     def run(self):
 
         # 判断是否多任务

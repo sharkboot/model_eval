@@ -2,32 +2,35 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 from core.base import DataItem
 
+
 class BaseDataset(ABC):
     def __init__(self, config):
         self.config = config
-    
-    @abstractmethod
+        self.limits = config.get("limits", None)
+
+        # 自动用类名作为 dataset_name（更优雅）
+        self.dataset_name = self.__class__.__name__
+
     def load(self) -> List[DataItem]:
+        raw_data = self.load_raw_data()
+
+        # ✅ limits 统一处理
+        if self.limits is not None:
+            raw_data = raw_data[: self.limits]
+
+        return [self.preprocess(item) for item in raw_data]
+
+    @abstractmethod
+    def load_raw_data(self) -> List[Dict[str, Any]]:
         """
-        加载数据集并转换为标准格式
-
-        Returns:
-            List[DataItem]: 标准格式的数据项列表
-
-        Raises:
-            NotImplementedError: 子类必须实现此方法
+        子类只负责加载原始数据
         """
         pass
 
     @abstractmethod
     def preprocess(self, data_item: Dict[str, Any]) -> DataItem:
-        """
-        将原始数据预处理为标准 DataItem
-
-        Args:
-            data_item: 原始数据项字典
-
-        Returns:
-            DataItem: 标准格式数据项
-        """
         pass
+
+    # ✅ 统一 ID 生成逻辑
+    def build_id(self, raw_id: Any) -> str:
+        return f"{self.dataset_name}_{hash(str(raw_id))}"

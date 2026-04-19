@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 
+
 @dataclass
 class DataItem:
     id: str
@@ -11,12 +12,20 @@ class DataItem:
     difficulty: Optional[str] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class ModelInput:
-    prompt: str
+    type: str  # "text" | "chat"
+
+    # text 模式
+    prompt: Optional[str] = None
+
+    # chat 模式
+    messages: Optional[List[Dict[str, str]]] = None
+
+    # 通用配置
     system_prompt: Optional[str] = None
-    generation_config: Dict[str, Any] = field(default_factory=dict)
-    messages: Optional[List[Dict[str, str]]] = None  # 多轮对话历史，格式: [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]
+
 
 @dataclass
 class EvaluationResult:
@@ -29,4 +38,24 @@ class EvaluationResult:
 
 @dataclass
 class ModelOutput:
-    text: str
+    type: str  # "text" | "chat"
+
+    text: Optional[str] = None
+    messages: Optional[List[Dict[str, str]]] = None
+
+    raw: Any = None
+    usage: Dict[str, Any] = field(default_factory=dict)
+
+    def get_text(self) -> str:
+        if self.type == "text":
+            return self.text or ""
+        elif self.type == "chat" and self.messages:
+            return self.messages[-1].get("content", "")
+        return ""
+
+    def get_messages(self) -> List[Dict[str, str]]:
+        if self.type == "chat" and self.messages:
+            return self.messages
+        elif self.type == "text" and self.text:
+            return [{"role": "assistant", "content": self.text}]
+        return []

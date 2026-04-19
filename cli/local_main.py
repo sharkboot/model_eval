@@ -9,7 +9,7 @@ from core.engine import EvaluationEngine
 def main():
 
 
-    config = load_config("E:\LLM\model_eval\examples\config/test.yaml")
+    config = load_config("E:\LLM\model_eval\configs/local_test.yaml")
     engine = EvaluationEngine(config)
 
     result = engine.run()
