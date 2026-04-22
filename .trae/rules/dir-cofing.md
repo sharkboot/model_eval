@@ -56,6 +56,22 @@ model_eval/
 │   ├── __init__.py
 │   ├── base.py               # 可视化基类
 │   └── platforms.py          # 可视化平台
+├── adapter/                    # 外部数据集适配器（数据集+评估器）
+│   ├── __init__.py           # 自动导入
+│   ├── README.md             # 适配器说明
+│   ├── writingbench/         # WritingBench
+│   │   ├── __init__.py       # 数据集适配器
+│   │   └── evaluator.py       # 评估器
+│   ├── alignbench/           # AlignBench
+│   │   ├── __init__.py
+│   │   └── evaluator.py
+│   ├── amo_bench/            # AMO-Bench
+│   │   ├── __init__.py
+│   │   └── evaluator.py
+│   ├── olympiadbench/        # OlympiadBench
+│   │   └── __init__.py
+│   └── chinese_simpleqa/       # ChineseSimpleQA
+│       └── __init__.py
 ├── configs/                   # 配置文件目录
 │   └── test.yaml             # 测试配置
 ├── docs/                      # 文档目录
@@ -79,6 +95,7 @@ model_eval/
 |------|------|
 | `core/` | 核心模块，包含数据类、引擎、注册中心等基础组件 |
 | `datasets/` | 数据集模块，存放所有数据集实现 |
+| `adapter/` | 外部数据集适配器，包含 WritingBench、AlignBench 等 |
 | `models/` | 模型模块，存放所有模型适配器 |
 | `evaluators/` | 评估器模块，存放所有评估器 |
 | `prompt_builder/` | 提示词构建器模块 |
@@ -142,3 +159,13 @@ evaluators/
 ├── base.py                   # 已存在
 └── {评估器名}.py            # 新增评估器实现
 ```
+
+### 添加新数据集适配器
+
+```
+adapter/
+├── __init__.py               # 自动导入，无需修改
+└── {数据集名}.py            # 新增适配器实现
+```
+
+详细说明请参考 `adapter/README.md`
