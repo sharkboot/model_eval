@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable, Dict, List, Type
 
 
 class Registry:
@@ -18,3 +18,8 @@ class Registry:
     @classmethod
     def create(cls, name: str, group: str, **kwargs):
         return cls.get(name, group)(kwargs)
+
+    @classmethod
+    def list_registered(cls, group: str) -> List[str]:
+        """List all registered names in a group."""
+        return list(cls._registry.get(group, {}).keys())

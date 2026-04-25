@@ -15,6 +15,7 @@ class EvaluationEngine:
         auto_import("tasks")
         auto_import("prompt_builder")
         auto_import("adapter")  # 外部数据集适配器
+        auto_import("reports")  # 报告格式
 
     def run(self):
 

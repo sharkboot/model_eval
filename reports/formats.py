@@ -1,9 +1,14 @@
 from .base import BaseReport, JSONReportMixin, CSVReportMixin
+from core.logger import get_logger
+from core.registry import Registry
 import json
 import csv
 from typing import Any, Dict, List, Optional, Iterator
 
+logger = get_logger()
 
+
+@Registry.register("json", "report")
 class JSONReport(BaseReport, JSONReportMixin):
     def generate(self) -> Dict[str, Any]:
         return self._generate_base()
@@ -13,6 +18,7 @@ class JSONReport(BaseReport, JSONReportMixin):
             json.dump(self.generate(), f, ensure_ascii=False, indent=2)
 
 
+@Registry.register("jsonl", "report")
 class JSONLinesReport(BaseReport):
     def generate(self) -> List[Dict[str, Any]]:
         return self._results
@@ -29,6 +35,7 @@ class JSONLinesReport(BaseReport):
                 yield
 
 
+@Registry.register("table", "report")
 class TableReport(BaseReport, CSVReportMixin):
     def __init__(self, config: Optional[Dict[str, Any]] = None, flatten: bool = True):
         super().__init__(config)
@@ -77,13 +84,15 @@ class LogReport(BaseReport):
 
     def save(self, path: str, **kwargs) -> None:
         level = kwargs.get('level', 'INFO')
+        log_method = getattr(logger, level.lower(), logger.info)
         for entry in self.generate():
-            print(f"[{level}] {entry}")
+            log_method(f"[{level}] {entry}")
 
         with open(path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(self.generate()))
 
 
+@Registry.register("markdown", "report")
 class MarkdownReport(BaseReport, CSVReportMixin):
     def generate(self, fields: Optional[List[str]] = None) -> str:
         if not self._results:
@@ -122,6 +131,7 @@ class MarkdownReport(BaseReport, CSVReportMixin):
             f.write(self.generate(kwargs.get('fields')))
 
 
+@Registry.register("html", "report")
 class HTMLReport(BaseReport, CSVReportMixin):
     def __init__(self, config: Optional[Dict[str, Any]] = None, title: str = "Evaluation Report"):
         super().__init__(config)
@@ -185,6 +195,7 @@ class HTMLReport(BaseReport, CSVReportMixin):
             f.write(self.generate(kwargs.get('fields')))
 
 
+@Registry.register("chart", "report")
 class ChartReport(BaseReport, CSVReportMixin):
     CHART_JS = """<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>"""
 

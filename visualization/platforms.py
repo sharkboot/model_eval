@@ -1,10 +1,14 @@
 from .base import BaseVisualizer
+from core.logger import get_logger
+
+logger = get_logger()
+
 
 class GradioVisualizer(BaseVisualizer):
     def __init__(self, config):
         super().__init__(config)
         self.interface = None
-    
+
     def setup(self):
         try:
             import gradio as gr
@@ -17,12 +21,12 @@ class GradioVisualizer(BaseVisualizer):
             return True
         except ImportError:
             return False
-    
+
     def visualize(self, data):
         if not self.interface:
             success = self.setup()
             if not success:
-                print("Gradio is not installed. Visualization will be skipped.")
+                logger.warning("Gradio is not installed. Visualization will be skipped.")
                 return
         # Launch the interface with sample data
         self.interface.launch(share=self.config.get('share', False))

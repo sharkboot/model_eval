@@ -7,6 +7,24 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from tasks.task_runner import BaseTaskRunner
 from core.registry import Registry
+from core.data_filter import DataFilter
+from core.logger import get_logger
+
+logger = get_logger()
+
+
+def load_results_from_jsonl(path: str) -> list:
+    """Load results from jsonl file."""
+    results = []
+    if not path or not os.path.exists(path):
+        return results
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            try:
+                results.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return results
 
 
 def build_run_dir(base_path: str, run_name: str = None):
@@ -71,8 +89,21 @@ class StandardTaskRunner(BaseTaskRunner):
         self.summary_file = os.path.join(self.run_dir, "summary.json")
         self.config_file = os.path.join(self.run_dir, "config.json")
 
+        # ========== DataFilter ==========
+        filter_config = config.get("filter")
+        self.filter = DataFilter(
+            categories_include=filter_config.get("categories_include") if filter_config else None,
+            categories_exclude=filter_config.get("categories_exclude") if filter_config else None,
+            custom_filter=filter_config.get("custom_filter") if filter_config else None,
+        ) if filter_config else None
+
         # ========== 文件锁 ==========
         self._lock = threading.Lock()
+
+        # ========== 报告配置 ==========
+        self.report_config = config.get("report", {})
+        self.report_formats = self.report_config.get("formats", ["json", "markdown"])
+        self.report_output_dir = self.report_config.get("output_dir", self.run_dir)
 
         # 保存 config
         self._save_config()
@@ -144,25 +175,65 @@ class StandardTaskRunner(BaseTaskRunner):
 
         return done_ids
 
+    def _generate_reports(self):
+        """Generate reports in configured formats."""
+        if not self.report_formats:
+            return
+
+        logger.info(f"Generating reports: {self.report_formats}")
+
+        # Load results from jsonl
+        results = load_results_from_jsonl(self.result_file)
+        if not results:
+            logger.warning("No results to generate report")
+            return
+
+        for format_name in self.report_formats:
+            try:
+                report = Registry.create(format_name, "report")
+                report.add_results(results)
+                report.set_metadata("run_dir", self.run_dir)
+                report.set_metadata("total_items", len(results))
+
+                output_path = os.path.join(
+                    self.report_output_dir,
+                    f"report_{format_name}.{format_name}"
+                )
+                report.save(output_path)
+                logger.info(f"Report saved: {output_path}")
+            except Exception as e:
+                logger.error(f"Failed to generate {format_name} report: {e}")
+
     def run(self):
         data = self.dataset.load()
+        total = len(data)
+        logger.info(f"Loaded {total} items from dataset")
+
+        # ===== 应用 DataFilter =====
+        if self.filter:
+            data = self.filter.apply(data)
+            logger.info(f"After filtering: {len(data)} items")
 
         # ===== 断点续跑 =====
         done_ids = self._load_done_ids()
+        remaining = [item for item in data if item.id not in done_ids]
+        logger.info(f"Resuming: {len(remaining)} items to process (already done: {len(done_ids)})")
 
         metric_agg = defaultdict(list)
 
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             futures = []
 
-            for item in data:
-                if item.id in done_ids:
-                    continue
-
+            for item in remaining:
                 futures.append(executor.submit(self._process_one, item))
 
+            completed = 0
             for future in as_completed(futures):
                 record = future.result()
+                completed += 1
+
+                if completed % 10 == 0 or completed == len(remaining):
+                    logger.info(f"Progress: {completed}/{len(remaining)}")
 
                 if "metrics" in record:
                     for k, v in record["metrics"].items():
@@ -175,8 +246,13 @@ class StandardTaskRunner(BaseTaskRunner):
             if len(v) > 0
         }
 
+        logger.info(f"Evaluation complete. Metrics: {final_metrics}")
+
         # ===== 保存 summary =====
         with open(self.summary_file, "w", encoding="utf-8") as f:
             json.dump(final_metrics, f, ensure_ascii=False, indent=2)
+
+        # ===== 生成报告 =====
+        self._generate_reports()
 
         return final_metrics

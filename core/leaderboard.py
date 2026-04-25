@@ -1,5 +1,10 @@
 # core/leaderboard.py
 
+from core.logger import get_logger
+
+logger = get_logger()
+
+
 class Leaderboard:
 
     def __init__(self):
@@ -12,8 +17,8 @@ class Leaderboard:
         return self.results
 
     def pretty_print(self):
-        print("\n===== Leaderboard =====")
+        logger.info("===== Leaderboard =====")
         for task, metrics in self.results.items():
-            print(f"\n[{task}]")
+            logger.info(f"[{task}]")
             for k, v in metrics.items():
-                print(f"  {k}: {v:.4f}")
+                logger.info(f"  {k}: {v:.4f}")

@@ -3,6 +3,11 @@ from core.registry import Registry
 from tasks.standard_runner import StandardTaskRunner
 
 
+from core.logger import get_logger
+
+logger = get_logger()
+
+
 class MultiTaskRunner:
 
     def __init__(self, config):
@@ -28,7 +33,7 @@ class MultiTaskRunner:
         for task_cfg in self.tasks:
             task_name = task_cfg.get("name", "unknown")
 
-            print(f"\n=== Running Task: {task_name} ===")
+            logger.info(f"Running Task: {task_name}")
 
             runner = self._build_runner(task_cfg)
 
@@ -37,6 +42,6 @@ class MultiTaskRunner:
             all_results[task_name] = result
 
             for k, v in result.items():
-                print(f"{k}: {v:.4f}")
+                logger.info(f"{k}: {v:.4f}")
 
         return all_results
