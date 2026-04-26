@@ -6,7 +6,7 @@ import re
 
 from core.base import DataItem
 from core.registry import Registry
-from evaluators.base import BaseEvaluator
+from adapter.evaluators.base import BaseEvaluator
 
 
 @Registry.register("amo_boxed", "evaluator")

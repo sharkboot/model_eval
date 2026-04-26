@@ -1,10 +1,15 @@
 """
 Evaluators 模块
 
-自动导入评估器实现
+评估器已迁移到 adapter/evaluators 目录
+此处保留用于向后兼容
 """
 
-from core.auto_import import auto_import
+from adapter.evaluators.base import BaseEvaluator, AccuracyEvaluator
+from adapter.evaluators.llm_judge import LLMJudgeEvaluator
 
-# 自动导入 evaluators 目录中的所有模块
-auto_import("evaluators")
+__all__ = [
+    "BaseEvaluator",
+    "AccuracyEvaluator",
+    "LLMJudgeEvaluator",
+]

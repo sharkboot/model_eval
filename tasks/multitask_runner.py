@@ -13,19 +13,30 @@ class MultiTaskRunner:
     def __init__(self, config):
         self.config = config
         self.tasks = config.get("tasks", [])
+        self.visualizer = None
+
+    def set_visualizer(self, visualizer):
+        """设置可视化器"""
+        self.visualizer = visualizer
 
     def _build_runner(self, task_cfg):
         task_type = task_cfg.get("type", "standard")
 
         if task_type == "standard":
-            return StandardTaskRunner(task_cfg)
+            runner = StandardTaskRunner(task_cfg)
+            if self.visualizer:
+                runner.set_visualizer(self.visualizer)
+            return runner
 
         else:
-            return Registry.create(
+            runner = Registry.create(
                 task_type,
                 "tasks",
                 **task_cfg.get("params", {})
             )
+            if self.visualizer and hasattr(runner, 'set_visualizer'):
+                runner.set_visualizer(self.visualizer)
+            return runner
 
     def run(self):
         all_results = {}

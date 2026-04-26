@@ -51,6 +51,7 @@ class StandardTaskRunner(BaseTaskRunner):
 
     def __init__(self, config):
         self.config = config
+        self.visualizer = None
 
         # ========== 组件初始化 ==========
         self.dataset = Registry.create(
@@ -108,6 +109,23 @@ class StandardTaskRunner(BaseTaskRunner):
         # 保存 config
         self._save_config()
 
+    def set_visualizer(self, visualizer):
+        """设置可视化器"""
+        self.visualizer = visualizer
+        # 启动监控
+        if hasattr(visualizer, 'start_monitoring'):
+            visualizer.start_monitoring(self.result_file, self.summary_file)
+
+    def _update_stage(self, stage: str, item_id: str = None, detail: str = None):
+        """更新监控阶段"""
+        if self.visualizer and hasattr(self.visualizer, 'monitor') and self.visualizer.monitor:
+            self.visualizer.monitor.set_stage(stage, item_id, detail)
+
+    def _append_log(self, message: str, level: str = "info"):
+        """添加日志"""
+        if self.visualizer and hasattr(self.visualizer, 'monitor') and self.visualizer.monitor:
+            self.visualizer.monitor.add_log(message, level)
+
     def _save_config(self):
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(self.config, f, ensure_ascii=False, indent=2)
@@ -119,19 +137,26 @@ class StandardTaskRunner(BaseTaskRunner):
 
     def _process_one(self, item):
         try:
+            # ===== 阶段: Dataset (已完成，加载下一条) =====
+            self._update_stage("dataset", item.id, f"处理数据: {item.id[:20]}...")
+
             # ===== 构造输入 =====
+            self._update_stage("prompt", item.id, "构建 Prompt")
             model_input = self.prompt_builder.build(item)
 
             # ===== 模型推理 =====
+            self._update_stage("model", item.id, "模型推理中...")
             model_output = self.model.generate(model_input)
 
             # ===== 评估 =====
+            self._update_stage("eval", item.id, "评估中...")
             metrics_all = {}
             for evaluator in self.evaluators:
                 metrics = evaluator.evaluate(model_output.get_text(), item)
                 metrics_all.update(metrics)
 
             # ===== 完整记录 =====
+            self._update_stage("result", item.id, "写入结果")
             record = {
                 "id": item.id,
                 "item": safe_serialize(item.__dict__),
@@ -144,9 +169,11 @@ class StandardTaskRunner(BaseTaskRunner):
                 "prediction": model_output.get_text(),
                 "metrics": metrics_all,
             }
+            self._append_log(f"完成评估: {item.id}", "success")
 
         except Exception as e:
             # 出错也记录
+            self._append_log(f"评估失败: {item.id} - {str(e)}", "error")
             record = {
                 "id": getattr(item, "id", None),
                 "item": safe_serialize(getattr(item, "__dict__", {})),
