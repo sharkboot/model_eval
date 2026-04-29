@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 
 from core.base import DataItem, EvaluationResult
 from core.registry import Registry
-from adapter.evaluators.base import BaseEvaluator
+from evaluators.base import BaseEvaluator
 
 
 @Registry.register("writingbench_score", "evaluator")

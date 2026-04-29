@@ -2,11 +2,11 @@
 AlignBench 评估器
 """
 
-from typing import Dict, Any, List
+from typing import Dict, List
 
 from core.base import DataItem
 from core.registry import Registry
-from adapter.evaluators.base import BaseEvaluator
+from evaluators.base import BaseEvaluator
 
 
 @Registry.register("alignbench_judge", "evaluator")
