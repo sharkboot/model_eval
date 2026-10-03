@@ -1,0 +1,22 @@
+tasks:
+  - name: swebench
+    type: standard
+    dataset:
+      name: SWE-bench
+      params:
+        data_path: "data/swebench/test.jsonl"
+        limits: 5  # 测试用少量
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 4096
+    evaluators:
+      - name: swebench_resolved
+        params:
+          use_sandbox: false  # 生产环境建议 true
+          timeout: 300
+    output_path: results/swebench

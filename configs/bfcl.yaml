@@ -1,0 +1,19 @@
+tasks:
+  - name: bfcl
+    type: standard
+    dataset:
+      name: BFCL
+      params:
+        data_path: "data/bfcl/bfcl_v3.jsonl"
+        limits: 50
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 512
+    evaluators:
+      - name: bfcl_function_match
+    output_path: results/bfcl
