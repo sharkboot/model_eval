@@ -1,0 +1,19 @@
+tasks:
+  - name: gpqa
+    type: standard
+    dataset:
+      name: GPQA
+      params:
+        data_path: "data/gpqa/gpqa_diamond.csv"
+        limits: 50
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 256
+    evaluators:
+      - name: accuracy
+    output_path: results/gpqa
