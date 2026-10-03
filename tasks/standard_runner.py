@@ -109,6 +109,10 @@ class StandardTaskRunner(BaseTaskRunner):
         # 保存 config
         self._save_config()
 
+        # ========== 写入缓冲 ==========
+        self._buffer = []
+        self._buffer_size = 10
+
     def set_visualizer(self, visualizer):
         """设置可视化器"""
         self.visualizer = visualizer
@@ -131,9 +135,36 @@ class StandardTaskRunner(BaseTaskRunner):
             json.dump(self.config, f, ensure_ascii=False, indent=2)
 
     def _append_record(self, record):
+        """缓冲写入，降低 I/O 频率；进程崩溃时最多丢失一个 buffer。"""
         with self._lock:
+            self._buffer.append(record)
+            if len(self._buffer) >= self._buffer_size:
+                self._flush_buffer_locked()
+
+    def _flush_buffer_locked(self):
+        """必须在持有 self._lock 时调用。"""
+        if not self._buffer:
+            return
+        tmp_path = self.result_file + ".tmp"
+        try:
+            with open(tmp_path, "a", encoding="utf-8") as f:
+                for record in self._buffer:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, self.result_file)  # 原子重命名
+        except Exception:
+            # 写入失败则降级为直接追加，避免数据丢失
             with open(self.result_file, "a", encoding="utf-8") as f:
-                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                for record in self._buffer:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        finally:
+            self._buffer.clear()
+
+    def _flush_all(self):
+        """在所有 worker 结束后，将剩余 buffer 全部刷入文件。"""
+        with self._lock:
+            self._flush_buffer_locked()
 
     def _process_one(self, item):
         try:
@@ -274,6 +305,9 @@ class StandardTaskRunner(BaseTaskRunner):
         }
 
         logger.info(f"Evaluation complete. Metrics: {final_metrics}")
+
+        # 刷完所有缓冲写入，确保结果完整
+        self._flush_all()
 
         # ===== 保存 summary =====
         with open(self.summary_file, "w", encoding="utf-8") as f:
