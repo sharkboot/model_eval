@@ -1,0 +1,19 @@
+tasks:
+  - name: math
+    type: standard
+    dataset:
+      name: MATH
+      params:
+        data_path: "data/math/test.jsonl"
+        limits: 100
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 1024
+    evaluators:
+      - name: amo_boxed
+    output_path: results/math
