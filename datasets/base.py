@@ -1,3 +1,4 @@
+import hashlib
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 from core.base import DataItem
@@ -31,6 +32,6 @@ class BaseDataset(ABC):
     def preprocess(self, data_item: Dict[str, Any]) -> DataItem:
         pass
 
-    # ✅ 统一 ID 生成逻辑
+    # ✅ 统一 ID 生成逻辑 — 使用确定性哈希替代 hash()，确保断点续跑有效
     def build_id(self, raw_id: Any) -> str:
-        return f"{self.dataset_name}_{hash(str(raw_id))}"
+        return f"{self.dataset_name}_{hashlib.sha256(str(raw_id).encode()).hexdigest()[:12]}"
