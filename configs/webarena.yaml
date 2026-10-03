@@ -1,0 +1,19 @@
+tasks:
+  - name: webarena
+    type: standard
+    dataset:
+      name: WebArena
+      params:
+        data_path: "data/webarena/test.jsonl"
+        limits: 5  # 网页任务测试建议少量
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 256
+    evaluators:
+      - name: accuracy
+    output_path: results/webarena

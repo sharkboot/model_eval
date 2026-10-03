@@ -1,0 +1,20 @@
+tasks:
+  - name: mathvista
+    type: standard
+    dataset:
+      name: MATH-Vista
+      params:
+        data_path: "data/mathvista/test.jsonl"
+        image_dir: "data/mathvista/images"
+        limits: 20
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 512
+    evaluators:
+      - name: amo_boxed
+    output_path: results/mathvista

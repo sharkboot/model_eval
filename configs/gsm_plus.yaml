@@ -1,0 +1,19 @@
+tasks:
+  - name: gsm_plus
+    type: standard
+    dataset:
+      name: GSM-Plus
+      params:
+        data_path: "data/gsm_plus/test.jsonl"
+        limits: 100
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 512
+    evaluators:
+      - name: accuracy
+    output_path: results/gsm_plus
