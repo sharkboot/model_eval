@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Results and data (keep configs but not outputs)
+results/
+data/
+dataset_report/
+
+# Skills scripts output
+skills/*/scripts/__pycache__/
+
+# Node
+node_modules/
+package-lock.json
