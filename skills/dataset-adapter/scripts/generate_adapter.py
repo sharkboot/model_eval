@@ -315,6 +315,7 @@ def generate_evaluator(dataset_name: str, mode: str) -> str:
 {dataset_name} 评估器
 """
 
+import re
 from core.base import DataItem
 from core.registry import Registry
 from evaluators.base import BaseEvaluator
@@ -328,23 +329,43 @@ class {class_name}Evaluator(BaseEvaluator):
         super().__init__(config)
 
     def evaluate(self, pred: str, item: DataItem) -> dict:
-        reference = str(item.reference).strip()
-        pred = pred.strip()
-        # 从模型输出中提取选项字母
-        for opt in ['A', 'B', 'C', 'D']:
-            if opt in pred:
-                return {{"accuracy": 1.0 if opt == reference else 0.0}}
+        reference = str(item.reference).strip().upper()
+        pred = pred.strip().upper()
+        # 优先匹配 "answer is X" / "选 X" 等强信号模式
+        strong_patterns = [
+            r"answer\\s+is\\s+([A-D])",
+            r"选\\s*([A-D])",
+            r"my\\s+answer\\s+is\\s+([A-D])",
+            r"the\\s+answer\\s+is\\s+([A-D])",
+        ]
+        for pat in strong_patterns:
+            match = re.search(pat, pred, re.IGNORECASE)
+            if match:
+                selected = match.group(1)
+                return {{"accuracy": 1.0 if selected == reference else 0.0}}
+        # 提取最后一个独立出现的选项字母
+        matches = re.findall(r"\\b([A-D])\\b", pred)
+        selected = matches[-1] if matches else None
+        if selected:
+            return {{"accuracy": 1.0 if selected == reference else 0.0}}
+        # 兜底：直接比对
         return {{"accuracy": 1.0 if pred == reference else 0.0}}
 '''
 
     elif mode == "generative":
         return f'''"""
 {dataset_name} 评估器
+
+TODO: 此评估器为桩实现，仅返回 accuracy=0.0。
+      请参考 adapter/writingbench/evaluator.py 实现真实 LLM-as-Judge 逻辑。
 """
 
-from core.base import DataItem, EvaluationResult
+import logging
+from core.base import DataItem
 from core.registry import Registry
 from evaluators.base import BaseEvaluator
+
+logger = logging.getLogger(__name__)
 
 
 @Registry.register("{slug}", "evaluator")
@@ -354,9 +375,14 @@ class {class_name}Evaluator(BaseEvaluator):
     def __init__(self, config):
         super().__init__(config)
         self.judge_model = config.get("judge_model", "claude")
+        logger.warning(
+            "[{slug}] 此评估器为桩实现，返回 accuracy=0.0，"
+            "请替换为真实 LLM-as-Judge 评分逻辑。"
+            "参考 adapter/writingbench/evaluator.py"
+        )
 
     def evaluate(self, pred: str, item: DataItem) -> dict:
-        # 基础评估逻辑（可根据报告中的评测方法扩展）
+        # TODO: 实现真实 LLM-as-Judge 评分逻辑
         return {{"accuracy": 0.0, "note": "LLM-as-Judge 评估需要实现详细评分逻辑"}}
 
 
@@ -377,7 +403,7 @@ class {class_name}SimpleEvaluator(BaseEvaluator):
 {dataset_name} 评估器
 """
 
-from core.base import DataItem, EvaluationResult
+from core.base import DataItem
 from core.registry import Registry
 from evaluators.base import BaseEvaluator
 
