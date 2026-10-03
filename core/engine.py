@@ -67,8 +67,16 @@ class EvaluationEngine:
 
         leaderboard.pretty_print()
 
-        # 保持可视化运行（仅当不是 daemon 线程时）
+        # 保持可视化运行（支持 CI 非交互模式：CI=true 或 auto_exit 配置）
         if self.visualizer:
-            input("Press Enter to stop visualization...")
+            auto_exit = self.config.get("auto_exit", False)
+            import os
+            if os.environ.get("CI") == "true" or auto_exit:
+                logger.info("CI mode or auto_exit enabled, skipping interactive wait.")
+            else:
+                try:
+                    input("Press Enter to stop visualization...")
+                except EOFError:
+                    logger.info("EOF received, stopping visualization.")
 
         return leaderboard.summary()
