@@ -21,4 +21,7 @@ class Leaderboard:
         for task, metrics in self.results.items():
             logger.info(f"[{task}]")
             for k, v in metrics.items():
-                logger.info(f"  {k}: {v:.4f}")
+                if isinstance(v, (int, float)):
+                    logger.info(f"  {k}: {v:.4f}")
+                else:
+                    logger.info(f"  {k}: {v}")
