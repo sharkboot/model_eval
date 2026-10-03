@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 讨论 / 提问
+    url: https://github.com/sharkboot/model_eval/discussions
+    about: 如果有问题或想法，欢迎在 Discussions 中交流
