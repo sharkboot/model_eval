@@ -1,8 +1,12 @@
 # core/engine.py
+import os
 import threading
 from core.auto_import import auto_import
 from tasks.multitask_runner import MultiTaskRunner
 from core.leaderboard import Leaderboard
+from core.logger import get_logger
+
+logger = get_logger()
 
 
 class EvaluationEngine:
@@ -70,7 +74,6 @@ class EvaluationEngine:
         # 保持可视化运行（支持 CI 非交互模式：CI=true 或 auto_exit 配置）
         if self.visualizer:
             auto_exit = self.config.get("auto_exit", False)
-            import os
             if os.environ.get("CI") == "true" or auto_exit:
                 logger.info("CI mode or auto_exit enabled, skipping interactive wait.")
             else:
