@@ -31,3 +31,7 @@ skills/*/scripts/__pycache__/
 # Node
 node_modules/
 package-lock.json
+.bitfun/
+
+# Temp issue drafts (consumed by `gh issue create`, then ignored)
+.tmp_issue*.md

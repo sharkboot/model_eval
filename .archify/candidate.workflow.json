@@ -1,0 +1,73 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "model_eval Core Evaluation Workflow",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "animation": "trace",
+    "views": [
+      { "id": "entry", "label": "Boot + Register", "focus": ["config_yaml", "engine_init", "registry"], "note": "YAML config bootstraps the engine, which auto-imports all component packages and registers them." },
+      { "id": "prepare", "label": "Load + Filter", "focus": ["load_data", "filter", "worker"], "note": "Dataset load, category filtering, then concurrent worker fan-out with checkpoint resume." },
+      { "id": "process", "label": "Per-Item Pipeline", "focus": ["worker", "eval_loop", "results_jsonl"], "note": "Each worker builds a prompt, calls the model, and runs the evaluator loop." },
+      { "id": "finalize", "label": "Summary + Report", "focus": ["results_jsonl", "summary", "report"], "note": "Aggregate metrics, flush buffers, write summary.json, generate configured reports." }
+    ]
+  },
+  "lanes": [
+    { "id": "config_lane", "label": "Config / Entry" },
+    { "id": "prepare_lane", "label": "Task Runner" },
+    { "id": "process_lane", "label": "Per-Item Pipeline" },
+    { "id": "finalize_lane", "label": "Persist / Report" },
+    { "id": "out_lane", "label": "Output" }
+  ],
+  "phases": [
+    { "id": "phase_boot", "label": "Boot", "fromCol": 0, "toCol": 2 },
+    { "id": "phase_prepare", "label": "Prepare", "fromCol": 3, "toCol": 3, "variant": "emphasis" },
+    { "id": "phase_process", "label": "Process + Finalize", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": ["config_yaml", "engine_init", "registry", "load_data", "filter", "worker", "eval_loop", "results_jsonl"],
+  "nodes": [
+    { "id": "config_yaml", "lane": "config_lane", "col": 0, "type": "database", "label": "config.yaml", "sublabel": "tasks / dataset" },
+    { "id": "engine_init", "lane": "config_lane", "col": 1, "type": "backend", "width": 108, "label": "EvaluationEngine", "sublabel": "core/engine.py" },
+    { "id": "registry", "lane": "config_lane", "col": 2, "type": "backend", "width": 96, "label": "Registry", "sublabel": "auto_import + reg" },
+
+    { "id": "load_data", "lane": "prepare_lane", "col": 3, "type": "database", "width": 96, "label": "dataset.load()", "sublabel": "DataItem list" },
+    { "id": "filter", "lane": "prepare_lane", "col": 4, "type": "backend", "width": 96, "label": "DataFilter", "sublabel": "category include" },
+
+    { "id": "worker", "lane": "process_lane", "col": 4, "type": "backend", "width": 96, "label": "process_one", "sublabel": "prompt + model" },
+    { "id": "eval_loop", "lane": "process_lane", "col": 5, "type": "backend", "width": 96, "label": "Evaluators", "sublabel": "eval loop" },
+
+    { "id": "results_jsonl", "lane": "finalize_lane", "col": 5, "type": "database", "width": 96, "label": "results.jsonl", "sublabel": "atomic rename" },
+    { "id": "summary", "lane": "finalize_lane", "col": 4, "type": "database", "width": 96, "label": "summary.json", "sublabel": "mean metrics" },
+
+    { "id": "report", "lane": "out_lane", "col": 5, "type": "messagebus", "width": 96, "label": "reports", "sublabel": "json / md / html" }
+  ],
+  "edges": [
+    { "from": "config_yaml", "to": "engine_init", "label": "load config" },
+    { "from": "engine_init", "to": "registry", "label": "auto_import" },
+    { "from": "registry", "to": "load_data", "label": "instantiate" },
+    { "from": "load_data", "to": "filter", "label": "apply filter" },
+    { "from": "filter", "to": "worker", "label": "remaining items" },
+    { "from": "worker", "to": "eval_loop", "label": "ModelOutput" },
+    { "from": "eval_loop", "to": "results_jsonl", "label": "record" },
+    { "from": "results_jsonl", "to": "summary", "label": "aggregate", "role": "return", "fromSide": "left", "toSide": "right" },
+    { "from": "results_jsonl", "to": "report", "label": "formats" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Registry Pattern", "items": [
+      "All components (dataset / model / evaluator / prompt_builder / report / tasks) auto-register via @Registry.register",
+      "Engine auto_imports each package once at boot; runners resolve by name + group",
+      "Multi-task mode delegates to MultiTaskRunner; single-task mode uses the registered 'standard' runner"
+    ] },
+    { "dot": "emerald", "title": "Concurrent + Resume", "items": [
+      "ThreadPoolExecutor with num_workers fans out process_one over remaining items",
+      "_load_done_ids reads results.jsonl to skip already-finished items on restart",
+      "Buffered writes with os.replace atomic rename; fallback direct-append on failure"
+    ] },
+    { "dot": "violet", "title": "Output Contract", "items": [
+      "results.jsonl: one JSON record per item (id, prediction, metrics, error)",
+      "summary.json: mean of each metric across all items",
+      "Optional report_*.{format} when report.formats is configured; Leaderboard prints final ranking"
+    ] }
+  ]
+}
