@@ -50,15 +50,30 @@
 - ✅ IFEval
 - ✅ HumanEval
 
-### ⭐ 第三批（待接入）
+### ⭐ 第三批（已完成）
+- ✅ SWE-bench
+- ✅ BFCL
+- ✅ HellaSwag
+- ✅ AGIEval
+- ✅ TruthfulQA
+- ✅ CLUEWSC
+
+### ⭐ 第四批（已完成，2026-10-03）
+- ✅ [MMMU](https://huggingface.co/datasets/MMMU/MMMU) — 11.5k 题，30 学科多模态
+- ✅ [MATH-Vista](https://huggingface.co/datasets/LMMs-Lab/MathVista) — 3.9k 题，可视化数学推理
+- ✅ [HLE](https://huggingface.co/datasets/cais/hle) — 2.5k 前沿难题
+- ✅ [WebArena](https://github.com/web-arena-x/webarena) — 812 个真实网页任务
+- ✅ [GSM-Plus](https://huggingface.co/datasets/datalab-to/GSM-Plus) — 9k+ 抗干扰数学题
 
 | # | 数据集 | 领域 | 规模 | 难点 | 接入建议 |
 |---|--------|------|------|------|----------|
 | 8 | [MMMU](https://huggingface.co/datasets/MMMU/MMMU) | 多模态 | 11.5k | 需图像输入 | 需扩展框架支持多模态 |
 | 9 | [MATH-Vista](https://huggingface.co/datasets/LMMs-Lab/MathVista) | 多模态数学 | 3.9k | 需图像输入 | 需扩展框架支持多模态 |
 | 10 | [HLE](https://huggingface.co/datasets/cais/hle) | 全学科前沿 | 2.5k | 需 HF 登录 | 需处理认证 |
-| 11 | [SWE-bench](https://huggingface.co/datasets/princeton-nlp/SWE-bench) | 软件工程 | 2.3k | 需代码沙箱 | 需容器化执行环境 |
-| 12 | [BFCL](https://huggingface.co/datasets/ShishirSilBFCL/bfcl_v3) | 工具调用 | 2.7k | 需 AST 解析 | 可扩展评估器类型 |
+| # | 数据集 | 领域 | 规模 | 难点 | 状态 |
+|---|--------|------|------|------|------|
+| 11 | [SWE-bench](https://huggingface.co/datasets/princeton-nlp/SWE-bench) | 软件工程 | 2.3k | 需代码沙箱 | ✅ 完成 |
+| 12 | [BFCL](https://huggingface.co/datasets/ShishirSilBFCL/bfcl_v3) | 工具调用 | 2.7k | 需 AST 解析 | ✅ 完成 |
 
 ### ⭐ 观察级（轻量基线）
 
@@ -68,8 +83,13 @@
 | 14 | [AGIEval](https://huggingface.co/datasets/NLP2CTEvals/AGIEval) | AGI 能力 | 1.7k | 低 | 中英文混合 |
 | 15 | [TruthfulQA](https://huggingface.co/datasets/truthfulqa/truthful_qa) | 幻觉 | 817 | 中 | 需 LLM 判分 |
 | 16 | [CLUEWSC](https://huggingface.co/datasets/clue/clue) | 中文推理 | 5k | 低 | 二选一选择题 |
-| 17 | [WebArena](https://github.com/web-arena-x/webarena) | 网页代理 | 812 | 极高 | 需浏览器环境 |
-| 18 | [GSM-Plus](https://huggingface.co/datasets/datalab-to/GSM-Plus) | 抗干扰数学 | 9k+ | 低 | 基于 GSM8K |
+| # | 数据集 | 领域 | 规模 | 接入难度 | 备注 |
+|---|--------|------|------|----------|------|
+| 17 | [WebArena](https://github.com/web-arena-x/webarena) | 网页代理 | 812 | 极高 | ✅ 完成（需浏览器环境） |
+| 18 | [GSM-Plus](https://huggingface.co/datasets/datalab-to/GSM-Plus) | 抗干扰数学 | 9k+ | 低 | ✅ 完成 |
+| 8 | [MMMU](https://huggingface.co/datasets/MMMU/MMMU) | 多模态 | 11.5k | 高 | ✅ 完成（需图像输入） |
+| 9 | [MATH-Vista](https://huggingface.co/datasets/LMMs-Lab/MathVista) | 多模态数学 | 3.9k | 高 | ✅ 完成（需图像输入） |
+| 10 | [HLE](https://huggingface.co/datasets/cais/hle) | 全学科前沿 | 2.5k | 中 | ✅ 完成（需 HF 登录） |
 
 ---
 
@@ -149,5 +169,7 @@ huggingface-cli login
 
 ## 更新日志
 
+- 2026-10-03: 完成全部 18 个候选数据集接入（MMMU + MATH-Vista + HLE + WebArena + GSM-Plus + HellaSwag + AGIEval + TruthfulQA + CLUEWSC + SWE-bench + BFCL）
+- 2026-10-02: 完成第三、四批接入（SWE-bench + BFCL + HellaSwag + AGIEval + TruthfulQA + CLUEWSC）
 - 2026-10-03: 完成第一批（GSM8K, MATH, MMLU）和第二批（MMLU-Pro, GPQA, IFEval, HumanEval）接入
 - 2026-10-02: 修复 7 个框架 bug，新增测试覆盖
