@@ -1,0 +1,19 @@
+tasks:
+  - name: agieval
+    type: standard
+    dataset:
+      name: AGIEval
+      params:
+        data_path: "data/agieval/test.jsonl"
+        limits: 100
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 128
+    evaluators:
+      - name: accuracy
+    output_path: results/agieval

@@ -1,0 +1,22 @@
+tasks:
+  - name: truthfulqa
+    type: standard
+    dataset:
+      name: TruthfulQA
+      params:
+        data_path: "data/truthfulqa/test.jsonl"
+        limits: 50
+    prompt_builder:
+      name: qa_builder
+    model:
+      name: MiniMax
+      params:
+        generation_config:
+          temperature: 0.0
+          max_tokens: 256
+    evaluators:
+      - name: truthfulqa_judge
+        params:
+          judge_model: claude
+          judge_api_config: {}
+    output_path: results/truthfulqa
