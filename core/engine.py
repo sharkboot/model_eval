@@ -56,9 +56,8 @@ class EvaluationEngine:
                 runner.set_visualizer(self.visualizer)
             results = runner.run()
         else:
-            # 单任务兼容
-            from tasks.standard_runner import StandardTaskRunner
-            runner = StandardTaskRunner(self.config)
+            # 单任务兼容：通过注册表获取 StandardTaskRunner
+            runner = Registry.create("standard", "tasks", config=self.config)
             if self.visualizer:
                 runner.set_visualizer(self.visualizer)
             results = {"single_task": runner.run()}

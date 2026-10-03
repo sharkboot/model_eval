@@ -22,21 +22,14 @@ class MultiTaskRunner:
     def _build_runner(self, task_cfg):
         task_type = task_cfg.get("type", "standard")
 
-        if task_type == "standard":
-            runner = StandardTaskRunner(task_cfg)
-            if self.visualizer:
-                runner.set_visualizer(self.visualizer)
-            return runner
-
-        else:
-            runner = Registry.create(
-                task_type,
-                "tasks",
-                **task_cfg.get("params", {})
-            )
-            if self.visualizer and hasattr(runner, 'set_visualizer'):
-                runner.set_visualizer(self.visualizer)
-            return runner
+        runner = Registry.create(
+            task_type,
+            "tasks",
+            **task_cfg.get("params", {})
+        )
+        if self.visualizer and hasattr(runner, 'set_visualizer'):
+            runner.set_visualizer(self.visualizer)
+        return runner
 
     def run(self):
         all_results = {}
