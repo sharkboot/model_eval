@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "model_eval Data & Results Pipeline",
+    "locale": "zh-CN",
+    "subtitle": "从原始数据到结果落盘的类型流转与并发缓冲写",
+    "viewBox": [1080, 760],
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "load", "label": "数据装载", "focus": ["raw", "normalize", "filter", "prompt"], "note": "DataLoader 读取原始记录，DataNormalizer 归一字段，DataFilter 按类别筛出 DataItem，PromptBuilder 渲染为 ModelInput。" },
+      { "id": "predict", "label": "模型推理", "focus": ["prompt", "modelin", "model", "modelout"], "note": "PromptBuilder 生成 ModelInput，Model 并发产出 ModelOutput。" },
+      { "id": "score", "label": "评估与落盘", "focus": ["evaluator", "result", "jsonl", "summary", "report"], "note": "Evaluator 打分得到 EvaluationResult，缓冲后原子写入 results.jsonl，聚合出 summary.json。" }
+    ]
+  },
+  "stages": [
+    { "label": "Ingest" },
+    { "label": "Build" },
+    { "label": "Infer" },
+    { "label": "Evaluate" },
+    { "label": "Persist" }
+  ],
+  "nodes": [
+    { "id": "raw", "type": "external", "label": "raw dataset", "sublabel": "JSONL / parquet", "stage": 0, "row": 1 },
+    { "id": "normalize", "type": "backend", "label": "DataNormalizer", "sublabel": "field + schema", "stage": 0, "row": 3 },
+    { "id": "filter", "type": "backend", "label": "DataFilter", "sublabel": "category / difficulty", "stage": 1, "row": 1 },
+    { "id": "prompt", "type": "backend", "label": "PromptBuilder", "sublabel": "per-dataset template", "stage": 1, "row": 3, "tag": "registered" },
+    { "id": "modelin", "type": "messagebus", "label": "ModelInput", "sublabel": "text | chat", "stage": 2, "row": 1 },
+    { "id": "model", "type": "cloud", "label": "Model.generate()", "sublabel": "concurrent workers", "stage": 2, "row": 3, "tag": "threadpool" },
+    { "id": "modelout", "type": "messagebus", "label": "ModelOutput", "sublabel": "text + usage", "stage": 3, "row": 1 },
+    { "id": "evaluator", "type": "backend", "label": "Evaluator", "sublabel": "accuracy / judge", "stage": 3, "row": 3, "tag": "registered" },
+    { "id": "result", "type": "backend", "label": "EvaluationResult", "sublabel": "metrics + details", "stage": 3, "row": 4 },
+    { "id": "jsonl", "type": "database", "label": "results.jsonl", "sublabel": "buffered + atomic", "stage": 4, "row": 1, "tag": "os.replace" },
+    { "id": "summary", "type": "database", "label": "summary.json", "sublabel": "mean metrics", "stage": 4, "row": 3 },
+    { "id": "report", "type": "messagebus", "label": "Report", "sublabel": "Leaderboard / html / md", "stage": 4, "row": 4, "tag": "optional", "width": 160 }
+  ],
+  "flows": [
+    { "from": "raw", "to": "normalize", "label": "raw record", "classification": "loaded", "variant": "emphasis", "route": "straight", "labelAt": [100, 314] },
+    { "from": "normalize", "to": "filter", "label": "normalized rows", "classification": "list[dict]", "variant": "default", "route": "vertical-channel" },
+    { "from": "filter", "to": "prompt", "label": "DataItem[]", "classification": "kept only", "variant": "emphasis", "route": "straight", "labelAt": [360, 314] },
+    { "from": "prompt", "to": "modelin", "label": "build()", "classification": "template render", "variant": "default", "route": "vertical-channel" },
+    { "from": "modelin", "to": "model", "label": "ModelInput", "classification": "concurrent", "variant": "emphasis", "route": "vertical-channel", "labelAt": [486, 430] },
+    { "from": "model", "to": "modelout", "label": "generate()", "classification": "per-item", "variant": "default", "route": "vertical-channel" },
+    { "from": "modelout", "to": "evaluator", "label": "prediction", "classification": "text", "variant": "emphasis", "route": "vertical-channel" },
+    { "from": "evaluator", "to": "result", "label": "evaluate()", "classification": "scored", "variant": "default", "route": "straight", "labelAt": [745, 542] },
+    { "from": "result", "to": "jsonl", "label": "append record", "classification": "buffer flush", "variant": "emphasis", "route": "vertical-channel" },
+    { "from": "jsonl", "to": "summary", "label": "aggregate", "classification": "mean of metrics", "variant": "default", "route": "straight", "labelAt": [960, 314] },
+    { "from": "summary", "to": "report", "label": "render", "classification": "optional", "variant": "dashed", "route": "straight", "labelAt": [960, 542] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Type Pipeline", "items": [
+      "raw → DataItem → ModelInput → ModelOutput → EvaluationResult",
+      "Each hop is a typed data class in core/base.py",
+      "ModelInput/ModelOutput switch on text vs chat mode"
+    ] },
+    { "dot": "emerald", "title": "Concurrency + Durability", "items": [
+      "ThreadPool workers pull from a shared item queue",
+      "Results buffer in memory, flushed with atomic os.replace",
+      "Checkpoint resume skips ids already in results.jsonl"
+    ] },
+    { "dot": "violet", "title": "Aggregation", "items": [
+      "summary.json stores the mean of every metric",
+      "Optional report_*.{format} and a Leaderboard render at the end",
+      "Evaluator + report both resolve through the Registry"
+    ] }
+  ]
+}

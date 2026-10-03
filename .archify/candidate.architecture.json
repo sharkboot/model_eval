@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "model_eval Component Architecture",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "registry", "label": "Registry wiring", "focus": ["registry", "datasets", "models", "evaluators", "prompt_builder", "adapter"], "note": "All components self-register into a single Registry via @Registry.register; the engine auto-imports each package once at boot." },
+      { "id": "runtime", "label": "Evaluation runtime", "focus": ["engine", "runner", "datasets", "models", "evaluators"], "note": "EvaluationEngine resolves dataset / model / evaluator by name and delegates execution to StandardTaskRunner." },
+      { "id": "output", "label": "Outputs and reports", "focus": ["runner", "results", "summary", "reports", "leaderboard"], "note": "Per-item records land in results.jsonl; aggregated metrics go to summary.json; optional reports and a leaderboard are produced at the end." }
+    ]
+  },
+  "layout": { "mode": "grid", "cols": 4, "gapX": 64, "gapY": 96, "cellW": 180, "cellH": 72 },
+  "components": [
+    { "id": "config", "type": "database", "label": "config.yaml", "sublabel": "tasks / dataset / model", "row": 0, "col": 0 },
+    { "id": "registry", "type": "backend", "label": "Registry", "sublabel": "@register + auto_import", "row": 0, "col": 1 },
+    { "id": "engine", "type": "backend", "label": "EvaluationEngine", "sublabel": "core/engine.py", "row": 0, "col": 2, "tag": "boot + run" },
+    { "id": "visualizer", "type": "external", "label": "Visualizer", "sublabel": "gradio monitor (optional)", "row": 0, "col": 3 },
+
+    { "id": "datasets", "type": "database", "label": "datasets/", "sublabel": "load + preprocess", "row": 1, "col": 0 },
+    { "id": "prompt_builder", "type": "backend", "label": "prompt_builder/", "sublabel": "DataItem -> ModelInput", "row": 1, "col": 1 },
+    { "id": "models", "type": "cloud", "label": "models/", "sublabel": "generate() -> ModelOutput", "row": 1, "col": 2 },
+    { "id": "adapter", "type": "backend", "label": "adapter/", "sublabel": "26 external datasets", "row": 2, "col": 3, "tag": "registered" },
+
+    { "id": "runner", "type": "backend", "label": "StandardTaskRunner", "sublabel": "ThreadPool + resume", "row": 2, "col": 1, "tag": "standard" },
+    { "id": "evaluators", "type": "backend", "label": "evaluators/", "sublabel": "evaluate(pred, item)", "row": 2, "col": 2 },
+    { "id": "reports", "type": "messagebus", "label": "reports/", "sublabel": "json / md / html / chart", "row": 3, "col": 3 },
+
+    { "id": "results", "type": "database", "label": "results.jsonl", "sublabel": "per-item records", "row": 3, "col": 1 },
+    { "id": "summary", "type": "database", "label": "summary.json", "sublabel": "mean metrics", "row": 3, "col": 2 },
+    { "id": "leaderboard", "type": "external", "label": "Leaderboard", "sublabel": "rank + pretty_print", "row": 3, "col": 0 }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "model_eval framework", "wraps": ["registry", "engine", "datasets", "prompt_builder", "models", "adapter", "runner", "evaluators", "reports", "results", "summary"] }
+  ],
+  "connections": [
+    { "id": "config-to-registry", "from": "config", "to": "registry", "label": "names + groups" },
+    { "id": "registry-to-engine", "from": "registry", "to": "engine", "label": "resolve by name" },
+    { "id": "engine-to-visualizer", "from": "engine", "to": "visualizer", "label": "optional monitor", "variant": "dashed" },
+    { "id": "datasets-to-runner", "from": "datasets", "to": "runner", "label": "DataItem[]" },
+    { "id": "runner-to-prompt", "from": "runner", "to": "prompt_builder", "label": "build prompt", "route": "straight" },
+    { "id": "prompt-to-model", "from": "prompt_builder", "to": "models", "label": "ModelInput", "labelAt": [500, 214] },
+    { "id": "model-to-evaluator", "from": "models", "to": "evaluators", "label": "ModelOutput", "labelAt": [616, 380] },
+    { "id": "runner-to-results", "from": "runner", "to": "results", "label": "append record", "labelAt": [300, 512] },
+    { "id": "results-to-summary", "from": "results", "to": "summary", "label": "aggregate" },
+    { "id": "results-to-leaderboard", "from": "results", "to": "leaderboard", "label": "publish" },
+    { "id": "engine-to-reports", "from": "engine", "to": "reports", "label": "finalize: generate reports", "variant": "dashed", "fromSide": "right", "toSide": "left", "via": [[700, 110], [700, 614]] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Registry Pattern", "items": [
+      "5 component groups: dataset / model / evaluator / prompt_builder / report + tasks",
+      "auto_import walks each package once at engine boot",
+      "adapter/ contributes 26 external dataset adapters + their evaluators"
+    ] },
+    { "dot": "emerald", "title": "Execution", "items": [
+      "Engine resolves components by name, hands off to StandardTaskRunner",
+      "ThreadPool workers process remaining items with checkpoint resume",
+      "Multi-task mode delegates to MultiTaskRunner"
+    ] },
+    { "dot": "violet", "title": "Outputs", "items": [
+      "results.jsonl holds one JSON record per item (prediction + metrics)",
+      "summary.json stores the mean of each metric",
+      "Optional report_*.{format} and a final Leaderboard"
+    ] }
+  ]
+}

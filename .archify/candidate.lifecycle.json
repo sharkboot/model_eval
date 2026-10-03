@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "Task Runner Lifecycle",
+    "locale": "zh-CN",
+    "subtitle": "StandardTaskRunner 从启动到收尾的状态机",
+    "viewBox": [1020, 700],
+    "animation": "trace",
+    "visual_preset": "classic",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "main-lifecycle", "label": "Main lifecycle", "focus": ["load", "filter", "process", "buffer", "done"], "note": "加载、过滤、并发处理、缓冲落盘、收尾出汇总。" },
+      { "id": "recovery", "label": "Recovery loop", "focus": ["process", "error", "buffer"], "note": "单条异常记录后继续，不影响其余结果。" },
+      { "id": "finalize", "label": "Finalize", "focus": ["buffer", "flush", "summary", "done"], "note": "原子写盘、聚合指标、可选报告。" }
+    ]
+  },
+  "lanes": [
+    { "id": "main", "label": "主生命周期" },
+    { "id": "exceptions", "label": "异常恢复" },
+    { "id": "terminal", "label": "收尾退出" }
+  ],
+  "states": [
+    { "id": "load", "type": "start", "label": "Load", "sublabel": "dataset + filter", "lane": "main", "col": 0, "step": "01", "tag": "entry" },
+    { "id": "filter", "type": "active", "label": "Filter", "sublabel": "category / resume", "lane": "main", "col": 1, "step": "02", "tag": "prepare" },
+    { "id": "process", "type": "active", "label": "Process", "sublabel": "threadpool workers", "lane": "main", "col": 2, "step": "03", "tag": "concurrent" },
+    { "id": "buffer", "type": "waiting", "label": "Buffer", "sublabel": "accumulate results", "lane": "main", "col": 3, "step": "04", "tag": "flush" },
+    { "id": "done", "type": "success", "label": "Done", "sublabel": "results + summary", "lane": "main", "col": 4, "step": "05", "tag": "terminal" },
+    { "id": "error", "type": "failure", "label": "Error", "sublabel": "record + continue", "lane": "exceptions", "col": 0, "yOffset": 78, "tag": "recoverable" },
+    { "id": "flush", "type": "active", "label": "Flush", "sublabel": "atomic os.replace", "lane": "exceptions", "col": 2, "yOffset": 78 },
+    { "id": "summary", "type": "active", "label": "Summary", "sublabel": "mean metrics + reports", "lane": "terminal", "col": 1 }
+  ],
+  "transitions": [
+    { "from": "load", "to": "filter", "label": "rows loaded", "labelAt": [171, 202] },
+    { "from": "filter", "to": "process", "label": "kept items", "variant": "emphasis", "labelAt": [325, 202] },
+    { "from": "process", "to": "buffer", "label": "per-item result", "variant": "emphasis", "labelAt": [479, 202] },
+    { "from": "process", "to": "error", "label": "exception", "variant": "security", "fromSide": "bottom", "toSide": "top", "route": "straight", "labelAt": [440, 260] },
+    { "from": "error", "to": "process", "label": "log + next", "variant": "emphasis", "route": "straight", "labelAt": [360, 300] },
+    { "from": "buffer", "to": "flush", "label": "exit loop", "variant": "emphasis", "route": "drop", "channelX": 760, "labelAt": [760, 280] },
+    { "from": "flush", "to": "summary", "label": "aggregated", "route": "straight", "via": [[615, 385], [615, 479]], "labelAt": [631, 440] },
+    { "from": "summary", "to": "done", "label": "finished", "variant": "emphasis", "via": [[900, 479], [900, 157], [651, 157]], "labelAt": [900, 300] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Main Path", "items": [
+      "Engine resolves dataset, prompt builder, model, evaluators",
+      "One horizontal rail carries load → filter → process → buffer → done",
+      "Resume skips ids already present in results.jsonl"
+    ] },
+    { "dot": "rose", "title": "Recovery", "items": [
+      "A per-item exception is captured and recorded",
+      "The run continues to the next queued item",
+      "Failures never abort the whole evaluation"
+    ] },
+    { "dot": "violet", "title": "Finalize", "items": [
+      "Buffered records flush atomically via os.replace",
+      "summary.json stores the mean of every metric",
+      "Optional report_* and a Leaderboard are emitted"
+    ] }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "adapter/ Dataset Groupings",
+    "locale": "zh-CN",
+    "subtitle": "26 external datasets grouped by capability domain",
+    "viewBox": [1040, 1180],
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "knowledge", "label": "Knowledge & understanding", "focus": ["mmlu", "mmlu_pro", "agieval", "ceval", "truthfulqa", "hle"], "note": "Broad-domain knowledge and Chinese evaluation suites." },
+      { "id": "reasoning", "label": "Reasoning & QA", "focus": ["gsm8k", "chinese_simpleqa", "gpqa", "gsm_plus", "math", "clue_wsc", "mathvista", "imo", "olympiadbench"], "note": "Logical reasoning, numerical QA, and olympiad problems." },
+      { "id": "code-tool", "label": "Code, tools & agents", "focus": ["humaneval", "bfcl", "ifeval", "swebench", "webarena", "mmmu", "eqbench"], "note": "Program synthesis, tool/function calling, web agents, and multimodal reasoning." },
+      { "id": "alignment", "label": "Alignment & writing", "focus": ["alignbench", "writingbench", "amo_bench", "amo"], "note": "Judge-scored alignment, long-form writing, and math reasoning benchmarks." }
+    ]
+  },
+  "layout": { "mode": "grid", "cols": 5, "gapX": 30, "gapY": 70, "cellW": 170, "cellH": 72 },
+  "components": [
+    { "id": "registry", "type": "backend", "label": "Registry", "sublabel": "dataset group · auto_import", "row": 0, "col": 4, "tag": "26 datasets" },
+
+    { "id": "mmlu", "type": "database", "label": "MMLU", "sublabel": "broad knowledge", "row": 0, "col": 0 },
+    { "id": "mmlu_pro", "type": "database", "label": "MMLU-Pro", "sublabel": "6-subject harder", "row": 0, "col": 1 },
+    { "id": "agieval", "type": "database", "label": "AGIEval", "sublabel": "Gaokao / SAT", "row": 1, "col": 0 },
+    { "id": "truthfulqa", "type": "database", "label": "TruthfulQA", "sublabel": "factual safety", "row": 1, "col": 1 },
+    { "id": "ceval", "type": "database", "label": "CEval", "sublabel": "Chinese exam", "row": 2, "col": 0 },
+    { "id": "hle", "type": "database", "label": "HLE", "sublabel": "frontier knowledge", "row": 2, "col": 1 },
+
+    { "id": "gsm8k", "type": "database", "label": "GSM8K", "sublabel": "grade-school math", "row": 0, "col": 2 },
+    { "id": "chinese_simpleqa", "type": "database", "label": "ChineseSimpleQA", "sublabel": "open QA", "row": 0, "col": 3 },
+    { "id": "gpqa", "type": "database", "label": "GPQA", "sublabel": "graduate science", "row": 1, "col": 2 },
+    { "id": "gsm_plus", "type": "database", "label": "GSM-Plus", "sublabel": "extended math", "row": 1, "col": 3 },
+    { "id": "math", "type": "database", "label": "MATH", "sublabel": "competition", "row": 2, "col": 2 },
+    { "id": "clue_wsc", "type": "database", "label": "CLUEWSC", "sublabel": "Chinese span", "row": 2, "col": 3 },
+    { "id": "mathvista", "type": "database", "label": "MATH-Vista", "sublabel": "visual math", "row": 3, "col": 2 },
+    { "id": "imo", "type": "database", "label": "IMO", "sublabel": "olympiad", "row": 3, "col": 3 },
+    { "id": "olympiadbench", "type": "database", "label": "OlympiadBench", "sublabel": "olympiad set", "row": 4, "col": 2 },
+
+    { "id": "humaneval", "type": "cloud", "label": "HumanEval", "sublabel": "code gen", "row": 1, "col": 4 },
+    { "id": "bfcl", "type": "cloud", "label": "BFCL", "sublabel": "function call", "row": 2, "col": 4 },
+    { "id": "ifeval", "type": "cloud", "label": "IFEval", "sublabel": "instruction follow", "row": 3, "col": 4 },
+    { "id": "swebench", "type": "cloud", "label": "SWE-bench", "sublabel": "repo fix", "row": 4, "col": 4 },
+    { "id": "webarena", "type": "cloud", "label": "WebArena", "sublabel": "web agent", "row": 5, "col": 4 },
+    { "id": "mmmu", "type": "cloud", "label": "MMMU", "sublabel": "multimodal", "row": 5, "col": 3 },
+    { "id": "eqbench", "type": "cloud", "label": "EqBench", "sublabel": "equivalence", "row": 5, "col": 2 },
+
+    { "id": "alignbench", "type": "messagebus", "label": "AlignBench", "sublabel": "judge score", "row": 6, "col": 2 },
+    { "id": "writingbench", "type": "messagebus", "label": "WritingBench", "sublabel": "long-form", "row": 6, "col": 3 },
+    { "id": "amo_bench", "type": "messagebus", "label": "AMOBench", "sublabel": "math + boxed", "row": 7, "col": 2 },
+    { "id": "amo", "type": "messagebus", "label": "AMO", "sublabel": "short alias", "row": 7, "col": 3 }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "adapter/ — 26 external datasets", "wraps": ["registry", "mmlu", "mmlu_pro", "agieval", "truthfulqa", "ceval", "hle", "gsm8k", "chinese_simpleqa", "gpqa", "gsm_plus", "math", "clue_wsc", "mathvista", "imo", "olympiadbench", "humaneval", "bfcl", "ifeval", "swebench", "webarena", "mmmu", "eqbench", "alignbench", "writingbench", "amo_bench", "amo"] }
+  ],
+  "connections": [
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Knowledge & Reasoning", "items": [
+      "MMLU / MMLU-Pro / AGIEval / CEval / HLE / TruthfulQA for broad knowledge",
+      "GPQA / MATH / MATH-Vista / IMO / OlympiadBench for hard reasoning",
+      "GSM8K / GSM-Plus / ChineseSimpleQA / CLUEWSC for QA + math"
+    ] },
+    { "dot": "emerald", "title": "Code, Tools & Agents", "items": [
+      "HumanEval + SWE-bench cover synthesis and repo-level fixes",
+      "BFCL + IFEval target function calling and instruction following",
+      "WebArena and MMMU exercise web agents and multimodal reasoning"
+    ] },
+    { "dot": "violet", "title": "Alignment & Writing", "items": [
+      "AlignBench and WritingBench use an LLM judge for open-ended output",
+      "AMOBench / AMO reuse the boxed-math evaluator",
+      "All 26 register into the single Registry dataset group"
+    ] }
+  ]
+}
